@@ -296,3 +296,7 @@ Hinweise:
 - Die Farbe gilt **nur für dieses Gerät** (wie Matrix-Regen). Handy und PC können also verschieden aussehen.
 - Warnungen bleiben gelb/orange, Fehler rot. Beim Bernstein-Theme werden Warnungen orange-rot, damit sie sich von der Grundfarbe abheben.
 - **Widget:** übernimmt die im Dashboard gewählte Farbe, wenn es im selben Browser läuft. Sonst die Farbe in der Adresse angeben: `/widget?theme=amber` (`green`, `amber`, `cyan`, `purple`), kombinierbar mit `&lang=en`.
+
+### BTC oder BCH
+
+Das Dashboard erkennt die Münze automatisch an der Node (Bitcoin Cash Node, ABC, Flowee, bchd → **BCH**; Bitcoin Core, Knots → **BTC**). Davon hängen Kurs, Bezeichnung bei „Belohnung jetzt“ und die Adressanzeige ab (CashAddr nur bei BCH). Ist die Node nicht erreichbar oder unbekannt, gilt die Variable `MC_COIN` (z. B. `MC_COIN=BTC`), sonst BCH.

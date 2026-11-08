@@ -296,3 +296,7 @@ Notes:
 - The colour applies to **this device only** (like the matrix rain). Phone and PC can look different.
 - Warnings stay yellow/orange, errors red. With the amber theme warnings turn orange-red so they stand out from the main colour.
 - **Widget:** uses the colour chosen in the dashboard if it runs in the same browser. Otherwise put the colour in the address: `/widget?theme=amber` (`green`, `amber`, `cyan`, `purple`), can be combined with `&lang=en`.
+
+### BTC or BCH
+
+The dashboard detects the coin automatically from the node (Bitcoin Cash Node, ABC, Flowee, bchd → **BCH**; Bitcoin Core, Knots → **BTC**). Price, the label at “Reward now” and the address display depend on it (CashAddr only on BCH). If the node is unreachable or unknown, the variable `MC_COIN` applies (e.g. `MC_COIN=BTC`), otherwise BCH.

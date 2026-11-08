@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1 – 2026-11-08
+- Coin is detected from the node (Bitcoin Cash Node etc. → BCH, Bitcoin Core / Knots → BTC): correct price, label and address display for BTC ckpools. Fallback: `MC_COIN`.
+
 ## 1.4.0 – 2026-11-08
 - Colour themes: green (default), amber, cyan, purple, chosen per device; widget accepts `?theme=`.
 

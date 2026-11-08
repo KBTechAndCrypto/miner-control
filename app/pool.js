@@ -88,6 +88,21 @@ async function rpc(method, params = []) {
   return j.result;
 }
 
+// Which coin the node mines, taken from its version string (getnetworkinfo "subversion"):
+// Bitcoin Cash Node / ABC / Flowee / bchd -> BCH, Bitcoin Core ("Satoshi") / Knots -> BTC.
+// Wins over the config value, so a BTC ckpool shows BTC price and addresses without any setting.
+let detectedCoin = null;
+function detectCoin(sub) {
+  if (!sub) return null;
+  if (/cash|bchn|flowee|bchd|bitcoin abc/i.test(sub)) return 'BCH';
+  if (/satoshi|knots/i.test(sub)) return 'BTC';
+  return null;
+}
+function coinNow() {
+  const cfg = ctx.getConfig();
+  return detectedCoin || (process.env.MC_COIN || '').toUpperCase() || (cfg.pool || {}).coin || 'BCH';
+}
+
 async function pollNode() {
   try {
     const bc = await rpc('getblockchaininfo');
@@ -116,6 +131,8 @@ async function pollNode() {
       version: net ? net.subversion : null, connections: net ? net.connections : null,
       peers, tpl, error: ''
     };
+    const c = detectCoin(node.version);
+    if (c && c !== detectedCoin) { detectedCoin = c; refreshPrice(); }   // coin changed: fetch the right price
   } catch (e) {
     node = Object.assign({}, node, { ok: false, error: e.name === 'TimeoutError' ? 'TIMEOUT' : (e.cause && e.cause.code) || e.message });
   }
@@ -123,13 +140,13 @@ async function pollNode() {
 
 async function pollPrice() {
   const cfg = ctx.getConfig();
-  const coin = (cfg.pool || {}).coin || 'BCH';
+  const coin = coinNow();
   const cur = (cfg.cost || {}).currency === 'EUR' ? 'EUR' : 'USD';     // price in the currency chosen in the settings
   try {
     const r = await fetch(`https://api.coinbase.com/v2/prices/${coin}-${cur}/spot`, { signal: AbortSignal.timeout(6000) });
     const j = await r.json();
     const p = parseFloat(j && j.data && j.data.amount);
-    if (isFinite(p)) price = { v: p, cur, t: Date.now() };
+    if (isFinite(p)) price = { v: p, cur, coin, t: Date.now() };
   } catch {}
 }
 
@@ -345,15 +362,16 @@ function state() {
   return {
     configured: true,
     name: (cfg.pool && cfg.pool.name) || 'ckpool',
-    coin: (cfg.pool && cfg.pool.coin) || 'BCH',
+    coin: coinNow(),
     mode: 'SOLO',
     stratumPort: port,
     ports, highdiff: conf ? conf.highdiff || 1000000 : null, startdiff: conf ? conf.startdiff || 42 : null,
     stratumHost: lanIp(),
     signature: conf ? conf.btcsig || '' : '',
     mindiff: conf ? conf.mindiff : null,
-    payout: addr || '', payoutCash: addr ? legacyToCashAddr(addr) : null,
-    node, price, nextReward, nextSubsidy, nextFees, expectDays, chanceDay,
+    // CashAddr only makes sense on BCH; on BTC the address is shown as it is in ckpool.conf
+    payout: addr || '', payoutCash: addr && coinNow() === 'BCH' ? legacyToCashAddr(addr) : null,
+    node, price: price && price.coin === coinNow() ? price : null, nextReward, nextSubsidy, nextFees, expectDays, chanceDay,
     pool: last
   };
 }

@@ -730,7 +730,7 @@ function renderPool() {
     ['Stratum', `<span class="copy" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(stratum)}')" title="${esc(t('i.copy'))}">${esc(stratum)}</span>`],
     [t('i.mode'), `${esc(s.mode)} · ${esc(s.coin)} · ${t('i.fee')}`],
     [t('i.payout'), esc(s.payoutCash || s.payout)],
-    ['Legacy', esc(s.payout)],
+    ...(s.payoutCash ? [['Legacy', esc(s.payout)]] : []),   // only BCH has a second (legacy) form
     [t('i.signature'), s.signature ? esc(s.signature) : `<span style="color:var(--warn)">${t('i.noSig')}</span>`],
     ...(s.ports || []).filter(x => x.highdiff).map(x => [t('i.highdiff'), t('i.startDiff', { port: x.port, v: Number(s.highdiff).toLocaleString(LOC()) })]),
     ['Diff', t('i.diff', { a: s.mindiff ?? '-', b: s.startdiff ?? '-' })],
