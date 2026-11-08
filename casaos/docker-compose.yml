@@ -1,0 +1,52 @@
+# Miner Control - CasaOS / Portainer stack (absolute paths, paste into the web editor)
+# Generic Docker with the whole project folder? Use docker/docker-compose.yml instead.
+#
+# Files on the server (default folder, change with MC_DIR):
+#   /DATA/AppData/minerdash/app/...        the program (read-only in the container)
+#   /DATA/AppData/minerdash/data           settings, history, events (created automatically)
+#   /DATA/AppData/minerdash/tailscale/...  only for the optional Tailscale profile
+#
+# Settings can be given as stack variables in Portainer (or in a .env file next to this file),
+# see .env.example. Every variable has a default, so the stack also works without any.
+#
+# OPTIONAL - HTTPS through Tailscale (needed to install the app on a phone and for push messages):
+#   Set COMPOSE_PROFILES=tailscale and TS_AUTHKEY=<auth key>, then deploy / update the stack.
+#   Without the profile only the dashboard container is started - nothing else changes.
+#   If you already run Tailscale on this server, you don't need the profile: use
+#   "tailscale serve" instead (see the guide).
+services:
+  minerdash:
+    image: node:22-alpine
+    container_name: minerdash
+    restart: unless-stopped
+    network_mode: host          # needed to reach the node RPC on 127.0.0.1:8332 (Linux only)
+    working_dir: /app
+    command: ["node", "server.js"]
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+      - PORT=${MC_PORT:-18090}  # web port (no port mapping in host mode)
+      - CKPOOL_DIR=/ckpool
+      - MC_LANG=${MC_LANG:-de}  # start language for new installs: de or en (switchable in the page header)
+    volumes:
+      - ${MC_DIR:-/DATA/AppData/minerdash}/app:/app:ro
+      - ${MC_DIR:-/DATA/AppData/minerdash}/data:/data
+      - ${CKPOOL_HOST_DIR:-/home/you/ckpool}:/ckpool:ro   # ckpool.conf + logs, read-only
+
+  # ---- optional: own Tailscale node that publishes the dashboard with HTTPS ----
+  # Result: https://<TS_HOSTNAME>.<your-tailnet>.ts.net  (port 443, only inside your tailnet)
+  tailscale:
+    profiles: ["tailscale"]
+    image: tailscale/tailscale:stable
+    container_name: minerdash-tailscale
+    restart: unless-stopped
+    network_mode: host          # so that 127.0.0.1:<port> reaches the dashboard
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY:-}          # create one at https://login.tailscale.com/admin/settings/keys
+      - TS_AUTH_ONCE=true                   # log in only the first time, afterwards the saved state is used
+      - TS_HOSTNAME=${TS_HOSTNAME:-minerdash}
+      - TS_USERSPACE=true                   # no tun device / extra rights needed, no clash with an existing Tailscale
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json  # publishes http://127.0.0.1:18090 as HTTPS
+    volumes:
+      - ${MC_DIR:-/DATA/AppData/minerdash}/tailscale/state:/var/lib/tailscale
+      - ${MC_DIR:-/DATA/AppData/minerdash}/tailscale/serve.json:/config/serve.json:ro

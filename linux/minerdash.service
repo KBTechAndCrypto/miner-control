@@ -1,0 +1,27 @@
+# systemd unit for Miner Control (installed by install.sh, which fills in @NODE@ and @USER@).
+# Settings are in /etc/minerdash.env  ->  after changing: sudo systemctl restart minerdash
+[Unit]
+Description=Miner Control (read-only dashboard for AxeOS miners)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Environment=DATA_DIR=/var/lib/minerdash
+EnvironmentFile=-/etc/minerdash.env
+ExecStart=@NODE@ /opt/minerdash/app/server.js
+Restart=on-failure
+RestartSec=5
+# /var/lib/minerdash is created and owned by the service user
+StateDirectory=minerdash
+# the dashboard only needs to read ckpool files and write its own data folder
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

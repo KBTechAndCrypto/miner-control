@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020604">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Miner Control</title>
+<script src="theme.js"></script>
+<script>
+  // ?theme=amber in the widget address wins over the colour chosen in the dashboard (not saved)
+  (function () { const q = new URLSearchParams(location.search).get('theme'); if (q) MCTheme.apply(q); })();
+</script>
+<style>
+  /* Compact view for phone widgets and small screens. Sizes scale with the window. */
+  :root{--bg:#020604;--line:#0f5f2c;--g:#39ff7a;--dim:#1f9d4d;--mute:#13693a;--txt:#b9ffd0;--warn:#ffb020;--bad:#ff3b4e;--orange:#ff9f1c;--g-rgb:57,255,122;
+    --u:min(4.2vw,7.4vh,16px);font-family:"Courier New",ui-monospace,Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);overflow:hidden}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
+  a.box{display:flex;flex-direction:column;height:100%;padding:calc(var(--u)*.8);border:1px solid var(--line);color:inherit;text-decoration:none;
+    background:radial-gradient(ellipse at 30% 0%,rgba(var(--g-rgb),.10),transparent 60%)}
+  .glow{color:var(--g);text-shadow:0 0 6px rgba(var(--g-rgb),.55),0 0 16px rgba(var(--g-rgb),.25)}
+  .top{display:flex;justify-content:space-between;align-items:center;font-size:calc(var(--u)*.8);letter-spacing:1px}
+  .top .st{color:var(--dim)}
+  .dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--g);box-shadow:0 0 6px var(--g);margin-right:.4em}
+  .hero{display:flex;align-items:baseline;gap:.4em;margin:calc(var(--u)*.35) 0 calc(var(--u)*.15)}
+  .hero b{font-size:calc(var(--u)*2.6)}
+  .hero span{color:var(--dim);font-size:calc(var(--u)*.95)}
+  .hero em{font-style:normal;color:var(--mute);font-size:calc(var(--u)*.8);margin-left:auto}
+  .sub{display:flex;gap:1.2em;font-size:calc(var(--u)*.85);color:var(--txt);margin-bottom:calc(var(--u)*.5);flex-wrap:wrap}
+  .sub .blk{color:var(--orange)}
+  .list{border-top:1px dashed var(--line);padding-top:calc(var(--u)*.4);display:grid;gap:calc(var(--u)*.25);font-size:calc(var(--u)*.85);overflow:hidden}
+  .row{display:grid;grid-template-columns:auto 1fr auto auto;gap:.8em;align-items:center;white-space:nowrap}
+  .row .n{overflow:hidden;text-overflow:ellipsis}
+  .row .h{color:var(--g)}
+  .row .t{color:var(--dim);min-width:4.2em;text-align:right}
+  .warn{color:var(--warn)!important} .bad{color:var(--bad)!important}
+  .off{opacity:.55}
+  .pool{margin-top:auto;padding-top:calc(var(--u)*.35);border-top:1px dashed var(--line);font-size:calc(var(--u)*.8);color:var(--dim);display:flex;gap:1em;flex-wrap:wrap;white-space:nowrap}
+  .pool b{color:var(--g);font-weight:normal}
+</style>
+</head>
+<body>
+<a class="box" id="box" href="./" target="_top">
+  <div class="top"><span class="glow" id="title">&gt;_ MINERS</span><span class="st"><span class="dot" id="dot"></span><span id="on">-</span> · <span id="time">--:--</span></span></div>
+  <div class="hero"><b class="glow" id="th">-</b><span>TH/s</span><em id="pct"></em></div>
+  <div class="sub"><span id="pw">- W</span><span id="eff">- J/TH</span><span class="blk" id="blk"></span><span id="cost"></span></div>
+  <div class="list" id="list"></div>
+  <div class="pool" id="pool" hidden></div>
+</a>
+<script src="i18n.js"></script>
+<script>
+'use strict';
+const COLORS = ['#1fb8ff', '#ff9f1c', '#d06bff', '#ffe14d', '#ff5c8a', '#4dffe1', '#a0ff4d', '#ff7a4d'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const params = new URLSearchParams(location.search);
+const refresh = Math.max(5, +(params.get('r') || 15)) * 1000;
+// language: ?lang=en in the widget address wins, otherwise the language set in the dashboard
+let lang = I18N.normalise(params.get('lang')) || 'de';
+const LOC = () => I18N.locale(lang);
+async function load() {
+  try {
+    const s = await (await fetch('api/summary', { cache: 'no-store' })).json();
+    if (!I18N.normalise(params.get('lang')) && I18N.normalise(s.lang)) lang = s.lang;
+    document.documentElement.lang = lang;
+    $('title').textContent = '>_ ' + s.title;
+    $('on').textContent = `${s.online}/${s.count}`;
+    $('dot').style.background = s.online === s.count ? 'var(--g)' : 'var(--bad)';
+    $('time').textContent = new Date(s.time).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' });
+    $('th').textContent = s.th.toFixed(2);
+    $('pct').textContent = s.expected ? I18N.tr(lang, 'w.target', { p: (s.th / s.expected * 100).toFixed(0) }) : '';
+    $('pw').textContent = `${s.power.toFixed(0)} W`;
+    $('eff').textContent = s.eff !== null ? `${s.eff.toFixed(1)} J/TH` : '- J/TH';
+    $('blk').textContent = s.blocks !== null ? `⛏ ${s.blocks}` : '';
+    $('cost').textContent = s.costDay ? I18N.tr(lang, 'stat.costDay', { v: new Intl.NumberFormat(LOC(), { style: 'currency', currencyDisplay: 'narrowSymbol', currency: s.currency === 'USD' ? 'USD' : 'EUR', maximumFractionDigits: 2 }).format(s.costDay) }) : '';
+    $('list').innerHTML = s.miners.map((m, i) => {
+      const tc = m.alerts.length ? 'warn' : '';
+      return `<div class="row ${m.online ? '' : 'off'}"><span style="color:${COLORS[i % COLORS.length]}">■</span>
+        <span class="n">${esc(m.name)}</span>
+        <span class="h ${m.online ? '' : 'bad'}">${m.online ? m.th.toFixed(2) + ' TH' : 'OFFLINE'}</span>
+        <span class="t ${tc}">${m.tmax !== null && m.online ? m.tmax.toFixed(0) + ' °C' : ''}</span></div>`;
+    }).join('');
+    const p = s.pool;
+    $('pool').hidden = !p;
+    if (p) $('pool').innerHTML = p.running
+      ? `<span>POOL</span><b>${p.th.toFixed(2)} TH</b><span>${p.workers} Worker</span><span>Best ${esc(p.bestText)}</span>${p.blocks ? `<span style="color:var(--orange)">⛏ ${p.blocks}</span>` : ''}`
+      : '<span>POOL</span><b class="bad">OFFLINE</b>';
+  } catch {
+    $('on').textContent = 'offline'; $('dot').style.background = 'var(--bad)';
+  }
+}
+load(); setInterval(load, refresh);
+</script>
+</body>
+</html>
