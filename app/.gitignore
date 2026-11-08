@@ -1,0 +1,5 @@
+data/
+docker/.env
+docker/tailscale/state/
+casaos/.env
+node_modules/
