@@ -12,6 +12,8 @@ Matrix-green look, German and English, installable as a phone app with push noti
 - **All miners on one page**: hashrate (vs. target), power, J/TH, ASIC and VR temperatures, fans, best difficulty, shares, uptime, pools. Cards fold out for details.
 - **Hashrate history** (1 h to 30 days) for every miner and the total.
 - **Alerts** for temperature, low hashrate, offline, low input voltage, overheat and stalled fans, with adjustable limits and an event log.
+- **Availability per miner**: uptime % for 24 h / 7 / 30 days, outages (offline or not hashing), longest outage and restarts – with a 2-minute grace after a restart.
+- **LOG page**: all events of the last 30 days, filter by miner, kind and period, an hour-by-hour overview grid (click an hour to see what happened) and CSV download.
 - **Push notifications** to your phone: block found, new best difficulty, miner offline / back online, warnings, ckpool or node down.
 - **POOL page** for your own **ckpool** (solo): pool hashrate, workers, best share vs. block, block chance, current reward, node status. The page only appears when a ckpool is found.
 - **Network scan** finds AxeOS miners in your local network.
@@ -30,6 +32,14 @@ Matrix-green look, German and English, installable as a phone app with push noti
 | Phone (installed as app) | Settings |
 |---|---|
 | ![Phone](docs/images/mobile.png) | ![Settings](docs/images/settings.png) |
+
+**Availability**
+
+![Availability](docs/images/availability.png)
+
+**LOG page** – hour grid and all entries of the last 30 days
+
+![LOG page](docs/images/log.png)
 
 **Colour themes**: green, amber, cyan, purple
 
@@ -90,7 +100,7 @@ Windows autostart, the systemd service on a real system, the Docker Tailscale pr
 
 ## 🇩🇪 Kurz auf Deutsch
 
-**Miner Control** ist ein Dashboard nur zum Anschauen für AxeOS-Miner (Bitaxe, NerdQaxe, LuckyAxe, …) und einen eigenen ckpool / BCH-Node. Es zeigt alle Miner auf einer Seite mit Verlauf, Warnungen, Push-Meldungen aufs Handy, Stromkosten, Netzwerk-Scan, Widget, Deutsch/Englisch und vier Farben. Es läuft mit Docker, CasaOS/Portainer, Linux und Windows und braucht nur Node.js 18+.
+**Miner Control** ist ein Dashboard nur zum Anschauen für AxeOS-Miner (Bitaxe, NerdQaxe, LuckyAxe, …) und einen eigenen ckpool / BCH-Node. Es zeigt alle Miner auf einer Seite mit Verlauf, Warnungen, Push-Meldungen aufs Handy, Verfügbarkeit pro Miner (Uptime), Seite LOG mit allen Einträgen der letzten 30 Tage, Stromkosten, Netzwerk-Scan, Widget, Deutsch/Englisch und vier Farben. Es läuft mit Docker, CasaOS/Portainer, Linux und Windows und braucht nur Node.js 18+.
 
 - Anleitung: [`docs/Anleitung_DE.md`](docs/Anleitung_DE.md)
 - Die Einstellungen haben **kein Passwort**: nur im Heimnetz oder per Tailscale (`serve`, nicht `funnel`) nutzen, nie ins Internet stellen.
