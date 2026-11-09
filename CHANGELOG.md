@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 – 2026-11-09
+- Availability per miner: uptime % for 24 h / 7 / 30 days, outages (offline / not hashing), longest outage, restarts, list of recent outages and restarts. Restarts are logged, not pushed. New file `app/uptime.js`. Idea by Rax Mining – thanks!
+- New LOG page: all events of the last 30 days, filter by miner / kind / period, 30-day hour grid (click an hour to see its entries), CSV download. Event log kept for 30 days.
+- 2-minute grace after a miner restart before "not hashing" counts as an outage; more robust restart detection.
+
+
 ## 1.4.2 – 2026-11-09
 - Fix: push notifications for workers whose names differ only by a number (e.g. `Rental` / `Rental2`) were dropped by the cooldown. The cooldown now separates messages by name, only measured values are ignored.
 

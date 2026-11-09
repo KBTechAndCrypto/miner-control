@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Miner Control</title>
+<script src="theme.js"></script>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#020604">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Miner Control">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+
+  :root{
+    --bg:#020604; --panel:rgba(4,18,10,.82); --line:#0f5f2c; --line-hi:#19c45a;
+    --g:#39ff7a; --g-dim:#2fc466; --g-mute:#22994f; --txt:#b9ffd0;
+    --g-rgb:57,255,122; --line-rgb:15,95,44; --dlg:#03100a; --fill0:#0e7a37;
+    --warn:#ffb020; --bad:#ff3b4e; --orange:#ff9f1c;
+    --font:"Courier New",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--font)}
+  body{min-height:100vh;overflow-x:hidden}
+  #rain{position:fixed;inset:0;z-index:0;opacity:.13;pointer-events:none}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+  .wrap{position:relative;z-index:2;max-width:1640px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 40px calc(16px + env(safe-area-inset-left))}
+  .glow{color:var(--g);text-shadow:0 0 6px rgba(var(--g-rgb),.55),0 0 18px rgba(var(--g-rgb),.25)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand h1{margin:0;font-size:22px;letter-spacing:2px}
+  .brand .sub{color:var(--g-dim);font-size:14px}
+  .cursor{display:inline-block;width:10px;height:18px;background:var(--g);margin-left:4px;
+    vertical-align:-2px;animation:blink 1s steps(1) infinite;box-shadow:0 0 8px var(--g)}
+  @keyframes blink{50%{opacity:0}}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line-hi);color:var(--g);font-size:12px;padding:5px 9px;
+    background:rgba(var(--g-rgb),.07);letter-spacing:.5px;white-space:nowrap}
+  .chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--g);
+    margin-right:6px;box-shadow:0 0 8px var(--g);animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  button.chip{cursor:pointer;font-family:var(--font)}
+  button.chip:hover{background:rgba(var(--g-rgb),.18)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);position:relative;
+    box-shadow:inset 0 0 24px rgba(var(--g-rgb),.05)}
+  .panel:hover{border-color:var(--line-hi)}
+  .panel::before,.panel::after{content:"";position:absolute;width:10px;height:10px;border:1px solid var(--g)}
+  .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  .label{font-size:12px;color:var(--g-dim);letter-spacing:1.2px;text-transform:uppercase}
+
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+  .stat{padding:14px 14px 12px}
+  .stat .val{font-size:26px;margin:8px 0 4px;font-weight:bold}
+  .stat .val small{font-size:14px;font-weight:normal;color:var(--g-dim)}
+  .stat .hint{font-size:12.5px;line-height:1.45;color:var(--g-mute)}
+  .stat.block .val{color:var(--orange);text-shadow:0 0 8px rgba(255,159,28,.5)}
+
+  .chart{padding:14px 16px 10px;margin-bottom:16px}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .chart-head h2{margin:0;font-size:14px}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--g-dim);flex-wrap:wrap}
+  .legend i{display:inline-block;width:14px;height:3px;margin-right:6px;vertical-align:middle}
+  .tabs{display:flex;gap:6px}
+  .tabs button{background:transparent;border:1px solid var(--line);color:var(--g-dim);
+    font-family:var(--font);font-size:11px;padding:4px 9px;cursor:pointer}
+  .tabs button.on{border-color:var(--g);color:var(--g);background:rgba(var(--g-rgb),.1);box-shadow:0 0 8px rgba(var(--g-rgb),.3)}
+  svg text{font-family:var(--font)}
+
+  .miners{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .miner{padding:16px}
+  .m-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+  .m-name{font-size:17px;font-weight:bold}
+  .m-meta{font-size:12px;color:var(--g-mute);margin-top:4px}
+  .m-state{font-size:11px;padding:3px 8px;border:1px solid var(--g);color:var(--g)}
+  .m-state.off{border-color:var(--bad);color:var(--bad)}
+  .m-hash{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .m-hash .big{font-size:34px;font-weight:bold}
+  .m-hash .unit{color:var(--g-dim)}
+  .m-hash .exp{font-size:12.5px;color:var(--g-mute)}
+  .badge{font-size:11px;padding:2px 6px;border:1px solid var(--g-dim);color:var(--g-dim);margin-left:2px}
+  .badge.oc{border-color:var(--orange);color:var(--orange)}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .kv{border:1px solid rgba(var(--line-rgb),.7);padding:8px}
+  .kv b{display:block;font-size:16px;margin-top:4px;color:var(--txt)}
+  .bars{display:grid;gap:7px;margin-bottom:12px}
+  .bar{display:grid;grid-template-columns:78px 1fr 58px;align-items:center;gap:8px;font-size:12.5px}
+  .bar .n{color:var(--g-dim)}
+  .bar .v{text-align:right}
+  .track{height:8px;border:1px solid var(--line);background:rgba(0,0,0,.4);position:relative;overflow:hidden}
+  .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--fill0),var(--g));box-shadow:0 0 8px rgba(var(--g-rgb),.6)}
+  .fill.warn{background:linear-gradient(90deg,#8a5a00,var(--warn));box-shadow:0 0 8px rgba(255,176,32,.6)}
+  .fill.bad{background:linear-gradient(90deg,#7a0010,var(--bad));box-shadow:0 0 8px rgba(255,59,78,.6)}
+  .pools{border-top:1px dashed var(--line);padding-top:10px;margin-bottom:12px;display:grid;gap:6px}
+  .pool{display:grid;grid-template-columns:1fr auto auto;gap:12px;font-size:13px;align-items:center}
+  .pool .ph{color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pool .ps{color:var(--g-dim)}
+  .m-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .m-foot .small{font-size:12.5px;line-height:1.5;color:var(--g-mute)}
+  a.open{color:var(--bg);background:var(--g);text-decoration:none;font-size:12px;font-weight:bold;
+    padding:7px 12px;box-shadow:0 0 12px rgba(var(--g-rgb),.45);letter-spacing:.5px}
+  a.open:hover{background:var(--txt)}
+
+  .bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+  .log{padding:14px 16px}
+  .log h2,.alerts h2{margin:0 0 10px;font-size:14px}
+  .log ul{list-style:none;margin:0;padding:0;font-size:13px;max-height:230px;overflow:auto}
+  .log li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
+  .log li .t{color:var(--g-mute);flex:0 0 auto}
+  .log li.blk{color:var(--orange)}
+  .log li.wrn{color:var(--warn)}
+  .alerts{padding:14px 16px}
+  .lgfilter{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .lgfilter label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--g-mute)}
+  .lgfilter select{min-width:150px}
+  .lgmap{display:grid;grid-template-columns:auto repeat(24,1fr);gap:2px;font-size:11px;overflow-x:auto}
+  .lgmap .d{color:var(--g-mute);padding-right:8px;white-space:nowrap;line-height:14px}
+  .lgmap .h{color:var(--g-mute);text-align:center;font-size:10px}
+  .lgmap i{display:block;height:14px;min-width:9px;background:rgba(var(--line-rgb),.25);cursor:pointer;position:relative}
+  .lgmap i.s1,.lglegend i.s1{background:rgba(var(--g-rgb),.55)} .lgmap i.sa,.lglegend i.sa{background:var(--warn);opacity:.55}
+  .lgmap i.sb,.lglegend i.sb{background:var(--warn)} .lgmap i.sx,.lglegend i.sx{background:var(--bad)} .lgmap i.sp,.lglegend i.sp{background:rgba(var(--g-rgb),.15)}
+  .lgmap i.rs::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#fff}
+  .lgmap i:hover,.lgmap i.sel{outline:1px solid var(--txt)}
+  .lglegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--g-mute)}
+  .lglegend i{display:inline-block;width:12px;height:12px;vertical-align:-2px;margin-right:5px;position:relative}
+  .lglist{list-style:none;margin:0;padding:0;font-size:13px;max-height:520px;overflow:auto}
+  .lglist li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
+  .lglist li .t{color:var(--g-mute);flex:0 0 auto;min-width:118px}
+  .lglist li .m{flex:0 0 auto;min-width:120px;color:var(--txt)}
+  .lglist li.blk{color:var(--orange)} .lglist li.wrn{color:var(--warn)} .lglist li.bad{color:var(--bad)} .lglist li.lnote{color:var(--g-dim)}
+  @media (max-width:600px){.lglist li{flex-wrap:wrap;gap:2px 10px}.lglist li .t,.lglist li .m{min-width:0}.lglist li > span:last-child{flex-basis:100%}}
+  .lgchip{font-size:12px;border:1px solid var(--g);padding:2px 8px;margin-left:8px;cursor:pointer;color:var(--g)}
+  .uptime{padding:14px 16px;margin-top:16px}
+  .uptime h2{margin:0 0 10px;font-size:14px}
+  .upgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+  .uptab{overflow-x:auto}
+  .uptime table{width:100%;border-collapse:collapse;font-size:13px}
+  .uptime th{color:var(--g-mute);font-weight:normal;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .uptime td{text-align:right;padding:6px;border-bottom:1px dashed rgba(var(--line-rgb),.6);white-space:nowrap}
+  .uptime th:first-child,.uptime td:first-child{text-align:left}
+  .uptime td .sub{display:block;color:var(--g-mute);font-size:11px}
+  .uptime .p-ok{color:var(--g)} .uptime .p-mid{color:var(--warn)} .uptime .p-bad{color:var(--bad)}
+  .uptime ul{list-style:none;margin:6px 0 0;padding:0;font-size:13px;max-height:200px;overflow:auto}
+  .uptime li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
+  .uptime li .t{color:var(--g-mute);flex:0 0 auto}
+  .uptime li.off{color:var(--bad)} .uptime li.zero{color:var(--warn)}
+  .rule{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6)}
+  .rule span:last-child{color:var(--g)}
+  .note{font-size:12px;color:var(--g-mute);margin-top:10px}
+
+  dialog{background:var(--dlg);color:var(--txt);border:1px solid var(--g);font-family:var(--font);
+    width:min(560px,calc(100vw - 32px));padding:0;box-shadow:0 0 40px rgba(var(--g-rgb),.25)}
+  dialog::backdrop{background:rgba(0,0,0,.7)}
+  .dlg-h{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .dlg-b{padding:14px 16px;display:grid;gap:12px;font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;align-items:center}
+  input{background:#000;border:1px solid var(--line);color:var(--g);font-family:var(--font);padding:6px 8px;font-size:12px;width:100%}
+  input:focus{outline:none;border-color:var(--g)}
+  .x{background:none;border:1px solid var(--line);color:var(--g-dim);font-family:var(--font);cursor:pointer;padding:5px 9px}
+  .x:hover{border-color:var(--bad);color:var(--bad)}
+  .demo{position:fixed;right:12px;bottom:10px;z-index:3;font-size:10px;color:var(--g-mute)}
+
+  @media (max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.miners{grid-template-columns:1fr}}
+  @media (max-width:760px){.bottom,.upgrid{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:520px){.stats{grid-template-columns:1fr 1fr}.stat .val{font-size:21px}.m-hash .big{font-size:28px}
+    .row{grid-template-columns:1fr}.brand h1{font-size:18px}}
+
+  .miner.warnbox{border-color:var(--warn)}
+  .miner.offbox{border-color:var(--bad)}
+  .miner.offbox .m-hash,.miner.offbox .grid4,.miner.offbox .bars{opacity:.35}
+  .alertline{font-size:11px;color:var(--warn);border:1px solid rgba(255,176,32,.5);padding:6px 8px;margin-bottom:10px}
+  .alertline.bad{color:var(--bad);border-color:rgba(255,59,78,.5)}
+  .log li.bad{color:var(--bad)}
+  .log li.ok{color:var(--g)}
+  .empty{padding:30px 16px;text-align:center;color:var(--g-dim);grid-column:1/-1}
+  .empty button{margin-top:12px}
+  .btn{background:var(--g);color:var(--bg);border:0;font-family:var(--font);font-weight:bold;padding:8px 14px;cursor:pointer;box-shadow:0 0 12px rgba(var(--g-rgb),.45)}
+  .btn:hover{background:var(--txt)}
+  .row2{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;align-items:center}
+  .dlg-f{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
+  .dlg-b{max-height:65vh;overflow:auto}
+  .chartwrap{position:relative}
+  .chartmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--g-mute);font-size:12px;pointer-events:none}
+  label.tog{display:flex;align-items:center;gap:8px;cursor:pointer}
+  label.tog input{width:auto;accent-color:var(--g)}
+  .tgl{background:transparent;border:1px solid var(--line);color:var(--g-dim);font-family:var(--font);font-size:11px;padding:6px 10px;cursor:pointer;letter-spacing:.5px}
+  .tgl:hover{border-color:var(--g);color:var(--g)}
+  .m-head .m-name{cursor:pointer}
+  .chart-head h2{cursor:pointer;user-select:none}
+  .chart.closed .chartwrap{display:none}
+  .chart.closed .chart-head{margin-bottom:0}
+  .chart .caret{display:inline-block;width:14px;color:var(--g-dim)}
+  .chart .now{font-size:12px;color:var(--g-dim);margin-left:10px;font-weight:normal}
+  .miners{align-items:start}
+  .miners.eq{align-items:stretch}
+  .miner{display:flex;flex-direction:column}
+  .miner .m-bottom{margin-top:auto}
+  .phrow{visibility:hidden}
+  .foot-btns{display:flex;gap:8px;align-items:center}
+  .details{border-top:1px dashed var(--line);padding-top:12px;margin-top:2px;margin-bottom:12px}
+  .kv b.t-warn{color:var(--warn)} .kv b.t-bad{color:var(--bad)}
+  .pages{display:flex;gap:6px}
+  .pages button{background:transparent;border:1px solid var(--line);color:var(--g-dim);font-family:var(--font);font-size:13px;font-weight:bold;letter-spacing:2px;padding:7px 16px;cursor:pointer}
+  .pages button:hover{color:var(--g);border-color:var(--g)}
+  .pages button.on{color:var(--bg);background:var(--g);border-color:var(--g);box-shadow:0 0 14px rgba(var(--g-rgb),.5)}
+  [hidden]{display:none!important}
+  select{background:#000;border:1px solid var(--line);color:var(--g);font-family:var(--font);padding:6px 8px;font-size:12px;width:100%}
+  select:focus{outline:none;border-color:var(--g)}
+  .scanrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);cursor:pointer}
+  .scanrow input{width:auto;accent-color:var(--g)}
+  .scanrow.known{opacity:.5;cursor:default}
+  .scanrow .ip{color:var(--g-mute);margin-left:6px}
+  .langs{display:inline-flex;gap:2px;align-items:center}
+  .langs button{background:none;border:0;color:var(--g-mute);font:inherit;cursor:pointer;padding:0 5px;letter-spacing:.5px}
+  .langs button:hover{color:var(--g)}
+  .langs button.on{color:var(--g);font-weight:bold;text-shadow:0 0 6px rgba(var(--g-rgb),.55)}
+  .ptable{width:100%;border-collapse:collapse;font-size:13px}
+  .ptable th{font-size:11px;color:var(--g-dim);letter-spacing:1.2px;text-transform:uppercase;text-align:right;font-weight:normal;padding:6px 8px;border-bottom:1px solid var(--line)}
+  .ptable td{text-align:right;padding:8px;border-bottom:1px dashed rgba(var(--line-rgb),.6);white-space:nowrap}
+  .ptable th:first-child,.ptable td:first-child{text-align:left}
+  .ptable tr.off td{opacity:.45}
+  .ptable .wn{color:var(--g);font-weight:bold}
+  .ptable .us{color:var(--g-mute);font-size:10px}
+  .tablewrap{overflow-x:auto}
+  .gauge{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;font-size:13px;margin:8px 0}
+  .gauge .n{color:var(--g-dim)}
+  .gauge .v{text-align:right}
+  .gtrack{height:10px;border:1px solid var(--line);background:rgba(0,0,0,.4);position:relative}
+  .gfill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--fill0),var(--g));box-shadow:0 0 8px rgba(var(--g-rgb),.6)}
+  .gtarget{position:absolute;top:-4px;bottom:-4px;right:0;width:2px;background:var(--bad);box-shadow:0 0 6px var(--bad)}
+  .gscale{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;font-size:11px;color:var(--g-mute)}
+  .gscale div:nth-child(2){display:flex;justify-content:space-between}
+  .info .rule span:last-child{text-align:right;word-break:break-all;margin-left:12px}
+  .copy{cursor:pointer;border-bottom:1px dashed var(--g-dim)}
+  .ppanel{padding:14px 16px;margin-bottom:16px}
+  .ppanel h2{margin:0 0 10px;font-size:14px}
+  .stat .val.bad{color:var(--bad);text-shadow:0 0 8px rgba(255,59,78,.5)}
+  @media (max-width:760px){.gauge,.gscale{grid-template-columns:96px 1fr 70px}}
+  @media (max-width:520px){.row2{grid-template-columns:1fr}.pages button{padding:6px 10px;font-size:12px}}
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1 class="glow">&gt;_ <span id="title">MINER CONTROL</span><span class="cursor"></span></h1>
+      <span class="sub" data-i="brand.sub"></span>
+    </div>
+    <nav class="pages" id="pages"><button data-p="miner">MINER</button><button data-p="pool">POOL</button><button data-p="log">LOG</button></nav>
+    <div class="chips">
+      <span class="chip"><span class="dot" id="dot"></span><span id="online">-</span></span>
+      <span class="chip" id="poll">POLL: -</span>
+      <span class="chip" id="clock">--:--:--</span>
+      <span class="chip langs" id="langs" data-it="lang.title"><button data-l="de">DE</button><button data-l="en">EN</button></span>
+      <button class="chip" onclick="openCfg()" data-i="hdr.settings"></button>
+    </div>
+  </header>
+
+  <div id="pageMiner">
+  <section class="stats">
+    <div class="panel stat"><div class="label">Total Hashrate</div><div class="val glow" id="sTot">-</div><div class="hint" id="sTotHint">-</div></div>
+    <div class="panel stat"><div class="label">Total Power</div><div class="val glow" id="sPow">-</div><div class="hint" id="sPowHint">-</div></div>
+    <div class="panel stat"><div class="label">Efficiency</div><div class="val glow" id="sEff">-</div><div class="hint" data-i="stat.effHint"></div></div>
+    <div class="panel stat"><div class="label">Best Difficulty</div><div class="val glow" id="sBest">-</div><div class="hint" id="sBestHint">all-time</div></div>
+    <div class="panel stat block"><div class="label">Blocks Found</div><div class="val" id="sBlk">-</div><div class="hint" id="sBlkHint">-</div></div>
+    <div class="panel stat"><div class="label">Shares</div><div class="val glow" id="sSh">-</div><div class="hint" id="sShHint" data-i="stat.sharesHint"></div></div>
+  </section>
+
+  <section class="panel chart" id="chartbox">
+    <div class="chart-head">
+      <h2 class="glow" onclick="toggleChart()" data-it="tip.toggle"><span class="caret" id="chartCaret">▾</span>⚡ Hashrate History (TH/s)<span class="now" id="chartNow"></span></h2>
+      <div class="legend" id="legend"></div>
+      <div class="tabs" id="tabs">
+        <button data-r="1h">1h</button><button data-r="6h">6h</button><button data-r="24h">24h</button><button data-r="7d">7d</button><button data-r="30d">30d</button>
+      </div>
+    </div>
+    <div class="chartwrap"><svg id="chart" style="width:100%;height:230px;display:block"></svg><div class="chartmsg" id="chartmsg"></div></div>
+  </section>
+
+  <section class="miners" id="miners"></section>
+
+  <section class="bottom">
+    <div class="panel log">
+      <h2 class="glow">▸ Event Log</h2>
+      <ul id="log"></ul>
+    </div>
+    <div class="panel alerts">
+      <h2 class="glow" data-i="alerts.title"></h2>
+      <div id="rules"></div>
+      <div class="note" data-i="alerts.note"></div>
+    </div>
+  </section>
+
+  <section class="panel uptime" id="uptimeBox">
+    <h2 class="glow" data-i="up.title"></h2>
+    <div class="upgrid">
+      <div class="uptab"><table><thead><tr><th data-i="up.miner"></th><th data-i="up.d1"></th><th data-i="up.d7"></th><th data-i="up.d30"></th><th data-i="up.outages"></th><th data-i="up.longest"></th><th data-i="up.restarts"></th></tr></thead><tbody id="upRows"></tbody></table></div>
+      <div><div class="label" data-i="up.recent"></div><ul id="upList"></ul></div>
+    </div>
+    <div class="note" data-i="up.note"></div>
+  </section>
+  </div>
+
+  <div id="pagePool" hidden>
+  <div id="poolOff" class="panel empty" hidden></div>
+  <div id="poolOn">
+  <section class="stats">
+    <div class="panel stat"><div class="label">Pool Hashrate</div><div class="val glow" id="pHash">-</div><div class="hint" id="pHashHint">-</div></div>
+    <div class="panel stat"><div class="label">Worker</div><div class="val glow" id="pWork">-</div><div class="hint" id="pWorkHint">-</div></div>
+    <div class="panel stat"><div class="label">Best Share</div><div class="val glow" id="pBest">-</div><div class="hint" id="pBestHint">-</div></div>
+    <div class="panel stat block"><div class="label">Blocks Found</div><div class="val" id="pBlk">-</div><div class="hint" id="pBlkHint">-</div></div>
+    <div class="panel stat"><div class="label">Network Difficulty</div><div class="val glow" id="pDiff">-</div><div class="hint" id="pDiffHint">-</div></div>
+    <div class="panel stat"><div class="label">Block-Chance</div><div class="val glow" id="pChance">-</div><div class="hint" id="pChanceHint">-</div></div>
+  </section>
+
+  <section class="panel chart" id="pchartbox">
+    <div class="chart-head">
+      <h2 class="glow" onclick="togglePChart()" data-it="tip.toggle"><span class="caret" id="pchartCaret">▾</span>⚡ Pool Hashrate (<span id="pUnit">TH/s</span>)<span class="now" id="pchartNow"></span></h2>
+      <div class="legend" id="plegend"></div>
+      <div class="tabs" id="ptabs">
+        <button data-r="1h">1h</button><button data-r="6h">6h</button><button data-r="24h">24h</button><button data-r="7d">7d</button><button data-r="30d">30d</button>
+      </div>
+    </div>
+    <div class="chartwrap"><svg id="pchart" style="width:100%;height:230px;display:block"></svg><div class="chartmsg" id="pchartmsg"></div></div>
+  </section>
+
+  <section class="panel ppanel">
+    <h2 class="glow">🎯 Best Share vs. Block <span class="now" id="gNote" style="font-size:12px;color:var(--g-dim);font-weight:normal"></span></h2>
+    <div id="gauges"></div>
+    <div class="gscale"><div></div><div><span>1 K</span><span>1 M</span><span>1 G</span><span>Block</span></div><div></div></div>
+  </section>
+
+  <section class="panel ppanel">
+    <h2 class="glow">⛏ Worker <span id="wCount" style="font-size:12px;color:var(--g-dim);font-weight:normal"></span></h2>
+    <div class="tablewrap"><table class="ptable"><thead><tr><th>Worker</th><th>1 min</th><th>1 h</th><th>24 h</th><th>Shares</th><th>Best · ever</th><th data-i="w.lastShare"></th></tr></thead><tbody id="wBody"></tbody></table></div>
+  </section>
+
+  <section class="bottom">
+    <div class="panel log">
+      <h2 class="glow">▸ Pool Event Log</h2>
+      <ul id="plog"></ul>
+    </div>
+    <div class="panel alerts info">
+      <h2 class="glow">▸ Pool &amp; Node</h2>
+      <div id="pinfo"></div>
+    </div>
+  </section>
+  </div>
+
+  </div>
+  <div id="pageLog" hidden>
+  <section class="panel ppanel">
+    <h2 class="glow" data-i="lg.title"></h2>
+    <div class="lgfilter">
+      <label><span data-i="lg.miner"></span><select id="lgMiner"></select></label>
+      <label><span data-i="lg.kind"></span><select id="lgLevel"></select></label>
+      <label><span data-i="lg.range"></span><select id="lgDays"></select></label>
+      <button class="btn ghost" id="lgCsv" data-i="lg.csv"></button>
+    </div>
+  </section>
+  <section class="panel ppanel" id="lgMapBox">
+    <h2 class="glow" id="lgMapTitle"></h2>
+    <div class="lgmap" id="lgMap"></div>
+    <div class="lglegend" id="lgLegend"></div>
+  </section>
+  <section class="panel ppanel">
+    <h2 class="glow"><span data-i="lg.entries"></span> <span class="hint" id="lgCount"></span> <span class="lgchip" id="lgHour" hidden></span></h2>
+    <ul class="lglist" id="lgList"></ul>
+  </section>
+  </div>
+</div>
+
+<dialog id="cfg">
+  <div class="dlg-h"><span class="glow" data-i="cfg.title"></span><button class="x" onclick="cfg.close()">✕</button></div>
+  <div class="dlg-b">
+    <div class="label" data-i="cfg.miners"></div>
+    <div id="cfgMiners" style="display:grid;gap:8px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="x" style="color:var(--g)" onclick="addRow()" data-i="cfg.addMiner"></button>
+      <button class="x" style="color:var(--g)" id="scanBtn" onclick="scanNet()" data-i="scan.btn"></button>
+    </div>
+    <input id="scanRange" data-ip="scan.range" maxlength="100" spellcheck="false">
+    <div id="scanBox" hidden></div>
+
+    <div class="label" style="margin-top:6px" data-i="cfg.general"></div>
+    <div class="row2"><span data-i="cfg.titleLbl"></span><input id="cTitle" maxlength="40"></div>
+    <div class="row2"><span data-i="cfg.poll"></span><input id="cPoll" type="number" min="5" max="300"></div>
+    <div class="row2"><span data-i="cfg.retention"></span><input id="cRet" type="number" min="1" max="365"></div>
+
+    <div class="label" style="margin-top:6px" data-i="cfg.cost"></div>
+    <div class="row2"><span data-i="cfg.price"></span><input id="cKwh" type="number" min="0" max="10" step="0.01"></div>
+    <div class="row2"><span data-i="cfg.currency"></span><select id="cCur"><option value="EUR">EUR (€)</option><option value="USD">USD ($)</option></select></div>
+
+    <div class="label" style="margin-top:6px" data-i="cfg.thresholds"></div>
+    <div class="row2"><span data-i="cfg.aAsic"></span><input id="aAsic" type="number"></div>
+    <div class="row2"><span data-i="cfg.aVr"></span><input id="aVr" type="number"></div>
+    <div class="row2"><span data-i="cfg.aHash"></span><input id="aHash" type="number"></div>
+    <div class="row2"><span data-i="cfg.aOff"></span><input id="aOff" type="number" step="0.5"></div>
+    <div class="row2"><span data-i="cfg.aVin"></span><input id="aVin" type="number"></div>
+
+    <div class="label" style="margin-top:6px">Pool</div>
+    <div class="note" id="poolHint" style="margin-bottom:6px"></div>
+    <div class="row2"><span data-i="cfg.hide"></span><input id="cHide" type="number" min="0" max="365"></div>
+
+    <div class="label" style="margin-top:6px" data-i="cfg.push"></div>
+    <div class="row2"><span id="pushState">-</span><span style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap"><button class="x" id="pushBtn" style="color:var(--g)" onclick="togglePush()"></button><button class="x" onclick="testPush()" data-i="push.test"></button></span></div>
+    <div class="note" id="pushNote" style="margin:0"></div>
+    <label class="tog"><input type="checkbox" id="pBlock"> <span data-i="push.optBlock"></span></label>
+    <label class="tog"><input type="checkbox" id="pOff"> <span data-i="push.optOff"></span></label>
+    <label class="tog"><input type="checkbox" id="pWarn"> <span data-i="push.optWarn"></span></label>
+    <label class="tog"><input type="checkbox" id="pOn"> <span data-i="push.optOn"></span></label>
+    <label class="tog"><input type="checkbox" id="pPool"> <span data-i="push.optPool"></span></label>
+    <label class="tog"><input type="checkbox" id="pBest"> <span data-i="push.optBest"></span></label>
+    <div class="row2"><span data-i="push.cooldown"></span><input id="pCd" type="number" min="0" max="1440"></div>
+
+    <div class="label" style="margin-top:6px" data-i="cfg.display"></div>
+    <label class="tog"><input type="checkbox" id="cRain"> <span data-i="cfg.rain"></span></label>
+    <div class="row2"><span data-i="cfg.theme"></span><select id="cTheme"></select></div>
+  </div>
+  <div class="dlg-f"><span class="note" id="cfgMsg" style="margin:0"></span><button class="btn" onclick="saveCfg()" data-i="cfg.save"></button></div>
+</dialog>
+
+<script src="i18n.js"></script>
+<script>
+'use strict';
+let state = null, range = '24h';
+const COLORS = ['#1fb8ff', '#ff9f1c', '#d06bff', '#ffe14d', '#ff5c8a', '#4dffe1', '#a0ff4d', '#ff7a4d'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+range = lsGet('mc.range', '24h');
+
+// ---------- language (German / English) ----------
+// Browser choice is kept in localStorage; the first start uses the server language, then the browser language.
+let lang = I18N.normalise(lsGet('mc.lang', '')) || (/^de/i.test(navigator.language || '') ? 'de' : 'en');
+const t = (k, a) => I18N.tr(lang, k, a);
+const LOC = () => I18N.locale(lang);
+// error codes from the server (TIMEOUT, ...) are translated when shown; other text is shown as is
+const errT = e => { const k = 'err.' + e; const v = t(k); return v === k ? e : v; };
+// events carry a translation key; old events (stored before the language switch existed) only have plain text
+const evText = e => e.k ? t(e.k, e.a) : String(e.text || '').replace(/^POOL: /, '');
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
+  document.querySelectorAll('[data-it]').forEach(e => e.title = t(e.dataset.it));
+  renderPoolHint();
+  renderUptime();
+  if (typeof lgFillSelects === 'function' && $('pageLog') && !$('pageLog').hidden) { lgFillSelects(); renderLog(); }
+  document.querySelectorAll('[data-ip]').forEach(e => e.placeholder = t(e.dataset.ip));
+  document.querySelectorAll('#cfgMiners .mn').forEach(e => e.placeholder = t('row.name'));
+  document.querySelectorAll('#cfgMiners .mi').forEach(e => e.placeholder = t('row.ip'));
+  document.querySelectorAll('#langs button').forEach(b => b.classList.toggle('on', b.dataset.l === lang));
+}
+function setLang(l, save = true) {
+  if (!I18N.normalise(l)) return;
+  lang = l; applyLang();
+  if (save) {
+    lsSet('mc.lang', l);
+    // also tells the server, so push messages use the same language
+    fetch('api/lang', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: l }) }).catch(() => {});
+  }
+  render(); renderPool(); drawChart(); drawPoolChart(); tick();
+  if ($('cfg').open) pushRefresh();
+}
+document.querySelectorAll('#langs button').forEach(b => b.onclick = () => setLang(b.dataset.l));
+let layout = { temps: 0, pools: 0 };
+let openSet = new Set();
+try { openSet = new Set(JSON.parse(lsGet('mc.open', '[]'))); } catch {}
+let chartOpen = lsGet('mc.chart', '1') === '1';
+function toggleMiner(id) {
+  openSet.has(id) ? openSet.delete(id) : openSet.add(id);
+  lsSet('mc.open', JSON.stringify([...openSet])); render();
+}
+function toggleChart() {
+  chartOpen = !chartOpen; lsSet('mc.chart', chartOpen ? '1' : '0'); applyChart(); render();
+  if (chartOpen) drawChart();
+}
+function applyChart() {
+  $('chartbox').classList.toggle('closed', !chartOpen);
+  $('chartCaret').textContent = chartOpen ? '▾' : '▸';
+  document.querySelectorAll('#tabs, #legend').forEach(e => e.style.display = chartOpen ? '' : 'none');
+}
+
+function fmtDiff(v) {
+  if (v === null || v === undefined) return '-';
+  const u = ['', 'K', 'M', 'G', 'T', 'P', 'E']; let i = 0;
+  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+  return `${v.toFixed(2)} <small>${u[i]}</small>`;
+}
+const fmtTH = gh => gh === null || gh === undefined ? '-' : (gh / 1000).toFixed(2);
+function fmtUptime(s) {
+  if (!s && s !== 0) return '-';
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return `${d} d ${String(h).padStart(2, '0')} h ${String(m).padStart(2, '0')} m`;
+}
+const fmtDate = ms => new Date(ms).toLocaleDateString(LOC(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fmtEvt = ms => new Date(ms).toLocaleString(LOC(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const cls = (v, w, b) => v >= b ? 'bad' : v >= w ? 'warn' : '';
+
+function bar(name, val, max, txt, w, b) {
+  const pct = Math.max(0, Math.min(100, (val || 0) / max * 100));
+  return `<div class="bar"><span class="n">${name}</span><div class="track"><div class="fill ${cls(val, w, b)}" style="width:${pct}%"></div></div><span class="v">${txt}</span></div>`;
+}
+
+function minerCard(m, idx) {
+  const d = m.data, a = state.alerts;
+  const color = COLORS[idx % COLORS.length];
+  const head = `
+    <div class="m-head">
+      <div><div class="m-name glow" onclick="toggleMiner('${esc(m.id)}')" title="${esc(t('tip.toggle'))}"><span style="color:${color}">■</span> ${esc(m.name)}</div>
+      <div class="m-meta">${esc(m.ip)}${d ? ` · ${d.asicCount ? d.asicCount + '× ' : ''}${esc(d.asicModel)} · ${esc(d.version)}` : ''}</div></div>
+      <span class="m-state ${m.online ? '' : 'off'}">● ${m.online ? (d && d.paused ? 'PAUSED' : 'ONLINE') : 'OFFLINE'}</span>
+    </div>`;
+  const open = `<a class="open" href="${/^https?:\/\//.test(m.ip) ? esc(m.ip) : 'http://' + esc(m.ip)}" target="_blank" rel="noopener">${t('miner.open')}</a>`;
+  if (!d) {
+    return `<article class="panel miner offbox">${head}
+      <div class="alertline bad">${t('miner.noConn')}${m.lastError ? ': ' + esc(errT(m.lastError)) : ''}. ${t('miner.checkIp')}</div>
+      <div class="m-foot"><span class="small">${t('miner.noData')}</span>${open}</div></article>`;
+  }
+  const alerts = !m.online
+    ? `<div class="alertline bad">${t('miner.offlineSince', { t: fmtEvt(m.lastSeen), err: m.lastError ? ' · ' + esc(errT(m.lastError)) : '' })}</div>`
+    : m.alerts.length ? `<div class="alertline">⚠ ${m.alerts.map(al => esc(t(al.k, al.a))).join(' · ')}</div>` : '';
+  const pctExp = d.expected ? (d.hash / d.expected * 100).toFixed(1) : null;
+  const tempsReal = d.temps.map((t, i) => bar(d.temps.length > 1 ? `ASIC ${i + 1}` : 'ASIC', t, 75, t.toFixed(1) + ' °C', a.asicTemp, a.asicTemp + 3)).join('');
+  const vinMax = d.nominal ? d.nominal + 0.5 : 13;
+  const fans = d.fans.map(f => `<div class="kv"><span class="label">${f.name}</span><b>${f.pct !== null ? Math.round(f.pct) : '-'} % <span class="badge">${esc(f.mode)}</span></b><span class="label">${f.rpm !== null ? Math.round(f.rpm) : '-'} rpm</span></div>`).join('');
+  const poolsReal = d.pools.map(p => `<div class="pool"><span class="ph" title="${esc(p.host)}">${p.connected ? '' : '<span style="color:var(--bad)">✕ </span>'}${esc(p.host)}${p.fallback ? ' <span class="badge">fallback</span>' : ''}</span><span class="ps">${p.share !== null && p.share !== undefined ? Math.round(p.share) + ' %' : ''}</span><span>${p.accepted.toLocaleString(LOC())} / <span style="color:var(--warn)">${p.rejected.toLocaleString(LOC())}</span></span></div>`).join('');
+  // placeholder rows keep sections aligned with the miner that has the most ASICs / pools
+  const padRows = (k, html) => Array.from({ length: Math.max(0, k) }, () => html).join('');
+  const temps = tempsReal + padRows(layout.temps - d.temps.length, `<div class="phrow">${bar('&nbsp;', 0, 1, '&nbsp;', 9, 9)}</div>`);
+  const pools = poolsReal + padRows(layout.pools - d.pools.length, '<div class="pool phrow"><span class="ph">&nbsp;</span><span></span><span>&nbsp;</span></div>');
+  const box = !m.online ? 'offbox' : m.alerts.length ? 'warnbox' : '';
+  const isOpen = openSet.has(m.id);
+  const maxT = d.temps.length ? Math.max(...d.temps) : null;
+  const tcls = (v, w, b) => v === null ? '' : v >= b ? 't-bad' : v >= w ? 't-warn' : '';
+  const asicTxt = maxT === null ? '-' : d.temps.length > 1
+    ? `${maxT.toFixed(1)} °C <span class="label" style="font-weight:normal">max</span>` : `${maxT.toFixed(1)} °C`;
+  return `
+    <article class="panel miner ${box}">${head}
+      <div class="m-hash">
+        <span class="big glow">${fmtTH(d.hash)}</span><span class="unit">TH/s</span>
+        ${pctExp ? `<span class="exp">${t('miner.ofTarget', { p: pctExp, v: fmtTH(d.expected) })}</span>` : ''}
+        ${d.profile ? `<span class="badge">${esc(d.profile)}</span>` : ''}${d.oc ? '<span class="badge oc">OC</span>' : ''}
+      </div>
+      <div class="grid4">
+        <div class="kv"><span class="label">Power</span><b>${d.power !== null ? d.power.toFixed(1) + ' W' : '-'}</b></div>
+        <div class="kv"><span class="label">${t('miner.eff')}</span><b>${d.power && d.hash ? (d.power / (d.hash / 1000)).toFixed(1) + ' J/TH' : '-'}</b></div>
+        <div class="kv"><span class="label">${t('miner.asicTemp')}</span><b class="${tcls(maxT, a.asicTemp, a.asicTemp + 3)}">${asicTxt}</b></div>
+        <div class="kv"><span class="label">${t('miner.vrTemp')}</span><b class="${tcls(d.vrTemp, a.vrTemp, a.vrTemp + 10)}">${d.vrTemp !== null ? d.vrTemp.toFixed(1) + ' °C' : '-'}</b></div>
+      </div>
+      ${isOpen ? `<div class="details">
+        <div class="grid4">
+          <div class="kv"><span class="label">${t('miner.freq')}</span><b>${d.freq !== null ? Math.round(d.freq) + ' MHz' : '-'}</b></div>
+          <div class="kv"><span class="label">${t('miner.vcore')}</span><b>${d.vcore ? (d.vcore / 1000).toFixed(3) + ' V' : '-'}</b></div>
+          <div class="kv"><span class="label">Input</span><b>${d.vin !== null ? d.vin.toFixed(2) + ' V' : '-'}</b></div>
+          <div class="kv"><span class="label">Error</span><b>${d.errorPct !== null ? d.errorPct.toFixed(2) + ' %' : '-'}</b></div>
+        </div>
+        <div class="bars">
+          ${temps}
+          ${d.vrTemp !== null ? bar('VR', d.vrTemp, 100, d.vrTemp.toFixed(1) + ' °C', a.vrTemp, a.vrTemp + 10) : ''}
+          ${d.vin !== null ? bar('Input', d.vin, vinMax, d.vin.toFixed(2) + ' V', 999, 999) : ''}
+        </div>
+        <div class="grid4">${fans}
+          <div class="kv"><span class="label">Best Diff</span><b>${fmtDiff(d.best)}</b><span class="label">Session ${fmtDiff(d.bestSession).replace(/<\/?small>/g, '')}</span></div>
+        </div>
+        <div class="pools"><div class="label">Pools · accepted / rejected</div>${pools}</div>
+      </div>` : ''}
+      <div class="m-bottom">${alerts}<div class="m-foot"><span class="small">Best <b style="color:var(--g)">${fmtDiff(d.best).replace(/<\/?small>/g, '')}</b> · Session ${fmtDiff(d.bestSession).replace(/<\/?small>/g, '')}<br>Uptime ${fmtUptime(d.uptime)}</span>
+        <span class="foot-btns"><button class="tgl" onclick="toggleMiner('${esc(m.id)}')">${isOpen ? t('miner.less') : t('miner.more')}</button>${open}</span></div></div>
+    </article>`;
+}
+
+function render() {
+  const s = state; if (!s) return;
+  $('title').textContent = s.title;
+  document.title = s.title;
+  $('poll').textContent = `POLL: ${s.pollSeconds} s`;
+  applyPoolAvail(s.pool);
+  const on = s.miners.filter(m => m.online).length;
+  $('online').textContent = `${on}/${s.miners.length} ONLINE`;
+  $('dot').style.background = on === s.miners.length ? 'var(--g)' : 'var(--bad)';
+
+  let tot = 0, exp = 0, pow = 0, acc = 0, rej = 0, best = null, bestName = '', blocks = 0, lastBlk = 0, hasBlk = false;
+  for (const m of s.miners) {
+    const d = m.data; if (!d) continue;
+    if (d.best !== null && (best === null || d.best > best)) { best = d.best; bestName = m.name; }
+    if (d.blocksTotal !== null) { blocks += d.blocksTotal; hasBlk = true; }
+    if (d.lastBlockTime) lastBlk = Math.max(lastBlk, d.lastBlockTime * 1000);
+    if (!m.online) continue;
+    tot += d.hash || 0; exp += d.expected || 0; pow += d.power || 0; acc += d.accepted; rej += d.rejected;
+  }
+  $('sTot').innerHTML = `${fmtTH(tot)} <small>TH/s</small>`;
+  $('chartNow').textContent = chartOpen ? '' : t('stat.now', { v: fmtTH(tot) });
+  $('sTotHint').textContent = exp ? t('stat.target', { v: fmtTH(exp), p: (tot / exp * 100).toFixed(1) }) : '-';
+  $('sPow').innerHTML = `${pow.toFixed(0)} <small>W</small>`;
+  {
+    const kwhDay = pow * 24 / 1000, c = s.cost || {};
+    $('sPowHint').innerHTML = esc(t('stat.perDay', { v: kwhDay.toFixed(2) })) +
+      (c.kwh > 0 ? `<br>${esc(t('stat.costDay', { v: money(kwhDay * c.kwh, c.currency, 2) }))} · ${esc(t('stat.costMonth', { v: money(kwhDay * c.kwh * 30, c.currency, 0) }))}` : '');
+  }
+  $('sEff').innerHTML = tot ? `${(pow / (tot / 1000)).toFixed(1)} <small>J/TH</small>` : '-';
+  $('sBest').innerHTML = fmtDiff(best);
+  $('sBestHint').textContent = best !== null ? `all-time · ${bestName}` : 'all-time';
+  $('sBlk').innerHTML = hasBlk ? `${blocks} <small>⛏</small>` : '-';
+  $('sBlkHint').textContent = lastBlk ? `Last ${fmtDate(lastBlk)}` : t('stat.noBlock');
+  $('sSh').innerHTML = acc >= 1e4 ? `${(acc / 1000).toFixed(1)} <small>K</small>` : String(acc);
+  $('sShHint').textContent = acc + rej ? `${rej} rejected · ${(rej / (acc + rej) * 100).toFixed(2)} %` : t('stat.sharesHint');
+
+  layout = { temps: 0, pools: 0 };
+  for (const m of s.miners) if (m.data) {
+    layout.temps = Math.max(layout.temps, m.data.temps.length);
+    layout.pools = Math.max(layout.pools, m.data.pools.length);
+  }
+  // equal card heights only when all cards are in the same state (all open or all closed)
+  const states = new Set(s.miners.map(m => openSet.has(m.id)));
+  $('miners').classList.toggle('eq', states.size === 1);
+  $('miners').innerHTML = s.miners.length
+    ? s.miners.map(minerCard).join('')
+    : `<div class="panel empty">${t('miner.empty')}<br><button class="btn" onclick="openCfg()">${t('miner.add')}</button></div>`;
+
+  const lvl = { block: 'blk', warn: 'wrn', bad: 'bad', ok: 'ok', info: '' };
+  const mev = s.events.filter(e => e.src !== 'pool');
+  $('log').innerHTML = mev.length
+    ? mev.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span><span>${esc(e.miner)}${e.miner ? ' · ' : ''}${esc(evText(e))}</span></li>`).join('')
+    : `<li><span class="t">-</span><span>${t('log.empty')}</span></li>`;
+
+  const a = s.alerts;
+  $('rules').innerHTML = [
+    [t('rule.asic'), `&gt; ${a.asicTemp} °C`], [t('rule.vr'), `&gt; ${a.vrTemp} °C`],
+    [t('rule.hash'), `&lt; ${a.hashPct} %`], [t('rule.offline'), `${a.offlineMin} min`],
+    [t('rule.vin'), esc(t('rule.nom', { v: a.minVinPct }))], [t('rule.history'), t('unit.days', { n: s.retentionDays })]
+  ].map(r => `<div class="rule"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+
+  $('legend').innerHTML = `<span><i style="background:var(--g)"></i>${t('legend.total')}</span>` +
+    s.miners.map((m, i) => `<span><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(m.name)}</span>`).join('');
+}
+
+// ---------- chart ----------
+let hist = null;
+function drawChart() {
+  const svg = $('chart'), msg = $('chartmsg');
+  const W = Math.max(300, svg.clientWidth || 1000), H = 230, L = 40, R = 10, T = 10, B = 24;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (!hist || !state) { svg.innerHTML = ''; return; }
+  const ids = state.miners.map(m => m.id).filter(id => hist.series[id]);
+  const n = ids.length ? hist.series[ids[0]].length : 0;
+  if (n < 2) { svg.innerHTML = ''; msg.textContent = t('chart.few'); return; }
+  msg.textContent = '';
+  const ser = ids.map(id => hist.series[id].map(v => (v || 0) / 1000));
+  const total = Array.from({ length: n }, (_, i) => ser.reduce((s, a) => s + a[i], 0));
+  let max = Math.max(1, ...total) * 1.15;
+  const stepV = max > 40 ? 10 : max > 16 ? 4 : max > 8 ? 2 : 1;
+  max = Math.ceil(max / stepV) * stepV;
+  const x = i => L + i * (W - L - R) / (n - 1), y = v => T + (H - T - B) * (1 - v / max);
+  const path = a => a.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  let g = '';
+  for (let v = 0; v <= max + 1e-9; v += stepV)
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${THEME.line}" stroke-dasharray="2 4"/><text x="${L - 8}" y="${y(v) + 4}" fill="${THEME.dim}" font-size="12" text-anchor="end">${v}</text>`;
+  const ticks = Math.max(2, Math.floor((W - L) / 110));
+  const long = hist.step >= 1800e3;
+  for (let k = 0; k <= ticks; k++) {
+    const i = Math.round(k * (n - 1) / ticks), t = new Date(hist.start + i * hist.step);
+    const lab = long ? t.toLocaleDateString(LOC(), { day: '2-digit', month: '2-digit' }) : t.toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' });
+    g += `<text x="${x(i)}" y="${H - 6}" fill="${THEME.mute}" font-size="11" text-anchor="${k === 0 ? 'start' : k === ticks ? 'end' : 'middle'}">${lab}</text>`;
+  }
+  const lines = ser.map((a, k) => `<path d="${path(a)}" fill="none" stroke="${COLORS[state.miners.findIndex(m => m.id === ids[k]) % COLORS.length]}" stroke-width="1.6"/>`).join('');
+  svg.innerHTML = `
+    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${THEME.g}" stop-opacity=".35"/><stop offset="1" stop-color="${THEME.g}" stop-opacity="0"/></linearGradient>
+    <filter id="gl"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    ${g}
+    <path d="${path(total)}L${x(n - 1)},${y(0)}L${x(0)},${y(0)}Z" fill="url(#ga)"/>
+    ${lines}
+    ${ids.length > 1 ? `<path d="${path(total)}" fill="none" stroke="${THEME.g}" stroke-width="2.2" filter="url(#gl)"/>` : ''}`;
+}
+async function loadHistory() {
+  try { hist = await (await fetch(`api/history?range=${range}`)).json(); } catch { hist = null; }
+  drawChart();
+}
+function setTab() { document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.r === range)); }
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { range = b.dataset.r; lsSet('mc.range', range); setTab(); loadHistory(); });
+addEventListener('resize', drawChart);
+
+// ---------- pages ----------
+let page = lsGet('mc.page', 'miner');
+function setPage(p) {
+  page = p === 'pool' || p === 'log' ? p : 'miner'; lsSet('mc.page', page);
+  $('pageMiner').hidden = page !== 'miner'; $('pagePool').hidden = page !== 'pool'; $('pageLog').hidden = page !== 'log';
+  document.querySelectorAll('#pages button').forEach(b => b.classList.toggle('on', b.dataset.p === page));
+  if (page === 'pool') { loadPool(); loadPoolHistory(); } else if (page === 'log') loadLog(); else drawChart();
+}
+document.querySelectorAll('#pages button').forEach(b => b.onclick = () => setPage(b.dataset.p));
+// no ckpool found: hide the POOL button and stay away from the pool page
+var poolAvail = { available: true, dir: '' };   // var: applyLang() may run before this line
+function applyPoolAvail(pa) {
+  poolAvail = pa || { available: true, dir: '' };
+  document.querySelector('#pages [data-p="pool"]').hidden = !poolAvail.available;
+  if (!poolAvail.available && page === 'pool') setPage('miner');
+  renderPoolHint();
+}
+function renderPoolHint() {
+  const el = $('poolHint'); if (!el) return;
+  el.innerHTML = poolAvail.available ? t('cfg.poolFound', { dir: esc(poolAvail.dir) }) : t('cfg.poolMissing', { dir: esc(poolAvail.dir) });
+  el.style.color = poolAvail.available ? 'var(--g)' : 'var(--g-dim)';
+}
+
+// ---------- pool page ----------
+let pstate = null, phist = null, prange = lsGet('mc.prange', '24h'), pchartOpen = lsGet('mc.pchart', '1') === '1';
+const fmtHs = h => h >= 1e15 ? (h / 1e15).toFixed(2) + ' <small>PH/s</small>' : (h / 1e12).toFixed(2) + ' <small>TH/s</small>';
+const plain = s => String(s).replace(/<\/?small>/g, '');
+function ago(ms) {
+  if (!ms) return '-';
+  const s = Math.max(0, (Date.now() - ms) / 1000);
+  if (s < 90) return Math.round(s) + ' s';
+  if (s < 5400) return Math.round(s / 60) + ' min';
+  if (s < 172800) return Math.round(s / 3600) + ' h';
+  return t('unit.days', { n: Math.round(s / 86400) });
+}
+function fmtDur(days) {
+  if (days === null || days === undefined) return '-';
+  if (days < 1) return (days * 24).toFixed(1) + ' h';
+  if (days < 365) return t('unit.days', { n: days.toFixed(0) });
+  return t('unit.years', { n: (days / 365).toFixed(1) });
+}
+function togglePChart() {
+  pchartOpen = !pchartOpen; lsSet('mc.pchart', pchartOpen ? '1' : '0'); applyPChart(); renderPool();
+  if (pchartOpen) drawPoolChart();
+}
+function applyPChart() {
+  $('pchartbox').classList.toggle('closed', !pchartOpen);
+  $('pchartCaret').textContent = pchartOpen ? '▾' : '▸';
+  document.querySelectorAll('#ptabs, #plegend').forEach(e => e.style.display = pchartOpen ? '' : 'none');
+}
+function gauge(name, val, target, txt) {
+  // log scale from 1 K to the network difficulty
+  const lo = Math.log10(1e3), hi = Math.log10(Math.max(target || 1e12, 1e4));
+  const pct = val > 0 ? Math.max(0, Math.min(100, (Math.log10(val) - lo) / (hi - lo) * 100)) : 0;
+  return `<div class="gauge"><span class="n">${name}</span><div class="gtrack"><div class="gfill" style="width:${pct}%"></div><div class="gtarget"></div></div><span class="v">${txt}</span></div>`;
+}
+function renderPool() {
+  const s = pstate; if (!s) return;
+  if (!s.configured) {
+    $('poolOn').hidden = true; $('poolOff').hidden = false;
+    $('poolOff').innerHTML = `${t('pool.none')}<br><span class="note">${t('pool.noneNote', { dir: esc(s.dir) })}</span>`;
+    return;
+  }
+  $('poolOn').hidden = false; $('poolOff').hidden = true;
+  const p = s.pool || {}, n = s.node || {};
+  const running = !!p.running;
+  $('pHash').innerHTML = running ? fmtHs(p.h1m || 0) : 'OFFLINE';
+  $('pHash').classList.toggle('bad', !running);
+  $('pHashHint').textContent = running ? `1 h Ø ${plain(fmtHs(p.h1h || 0))} · 24 h Ø ${plain(fmtHs(p.h1d || 0))}` : t('pool.stopped', { ago: ago(Date.now() - (p.statusAge || 0)) });
+  $('pchartNow').textContent = pchartOpen ? '' : `· jetzt ${plain(fmtHs(p.h1m || 0))}`;
+  const wl = p.workers || [];
+  $('pWork').innerHTML = `${p.workersOnline || 0} <small>/ ${wl.length}</small>`;
+  $('pWorkHint').textContent = t('pool.workersHint');
+  $('pBest').innerHTML = fmtDiff(p.bestever || 0);
+  $('pBestHint').textContent = t('pool.thisRound', { v: plain(fmtDiff(p.bestSinceBlock || 0)) });
+  const blocks = p.blocks || [];
+  $('pBlk').innerHTML = `${blocks.length} <small>⛏</small>`;
+  $('pBlkHint').textContent = blocks.length ? t('pool.lastBlock', { d: fmtDate(blocks[blocks.length - 1].t), h: blocks[blocks.length - 1].height }) : t('pool.noBlocksYet');
+  $('pDiff').innerHTML = n.ok ? fmtDiff(n.difficulty) : '-';
+  $('pDiffHint').textContent = n.ok ? `${t('pool.height')} ${n.height.toLocaleString(LOC())}${n.nethash ? ' · ' + t('pool.net') + ' ' + (n.nethash / 1e18).toFixed(2) + ' EH/s' : ''}` : `Node: ${n.error ? errT(n.error) : t('pool.noAnswer')}`;
+  $('pChance').innerHTML = s.expectDays ? `${t('pool.avg')} ${fmtDur(s.expectDays).replace(/ (\S+)$/, ' <small>$1</small>')}` : '-';
+  const usd = s.price && s.nextReward ? ` ≈ ${money(s.price.v * s.nextReward, s.price.cur, 0)}` : '';
+  const rew = s.nextReward ? t('pool.reward', { v: s.nextReward.toLocaleString(LOC(), { maximumFractionDigits: 5 }), c: s.coin, usd }) : '';
+  $('pChanceHint').innerHTML = [s.chanceDay ? t('pool.perDay', { p: (s.chanceDay * 100).toFixed(3) }) : '', rew].filter(Boolean).map(esc).join('<br>') || '-';
+
+  const target = n.ok ? n.difficulty : null;
+  const pctTxt = v => target ? `${(v / target * 100).toPrecision(2)} %` : plain(fmtDiff(v));
+  const rows = [gauge('All-time', p.bestever || 0, target, pctTxt(p.bestever || 0)), gauge(t('gauge.round'), p.bestSinceBlock || 0, target, pctTxt(p.bestSinceBlock || 0))];
+  for (const w of wl.slice(0, 6)) rows.push(gauge(esc(w.short), w.bestever || 0, target, pctTxt(w.bestever || 0)));
+  $('gauges').innerHTML = rows.join('');
+  $('gNote').textContent = target ? t('gauge.note', { v: plain(fmtDiff(target)) }) : '';
+
+  $('wCount').textContent = `· ${p.workersOnline || 0} online`;
+  $('wBody').innerHTML = wl.length ? wl.map((w, i) => `<tr class="${w.online ? '' : 'off'}">
+      <td><span style="color:${COLORS[i % COLORS.length]}">■</span> <span class="wn">${esc(w.short)}</span> <span class="badge" style="${w.online ? '' : 'border-color:var(--bad);color:var(--bad)'}">${w.online ? 'ONLINE' : 'OFFLINE'}</span><br><span class="us">${esc(w.user.length > 24 ? w.user.slice(0, 10) + '…' + w.user.slice(-8) : w.user)}</span></td>
+      <td>${plain(fmtHs(w.h1m))}</td><td>${plain(fmtHs(w.h1h))}</td><td>${plain(fmtHs(w.h1d))}</td>
+      <td>${Number(w.shares).toLocaleString(LOC())}</td>
+      <td>${plain(fmtDiff(w.best))} · ${plain(fmtDiff(w.bestever))}</td>
+      <td title="${esc(t('w.lastShareTip'))}">${w.shareAge !== null && w.shareAge < 65000 && w.online ? '&lt; 1 min' : ago(w.lastshare)}</td></tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:left;color:var(--g-dim)">${t('w.none')}</td></tr>`;
+
+  const stratum = `stratum+tcp://${s.stratumHost || location.hostname}:${s.stratumPort}`;
+  $('pinfo').innerHTML = [
+    ['Status', running ? `<span style="color:var(--g)">${t('i.running')}</span>${t('i.since', { t: fmtUptime(p.runtime) })}` : `<span style="color:var(--bad)">${t('i.stopped')}</span>`],
+    ['Stratum', `<span class="copy" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(stratum)}')" title="${esc(t('i.copy'))}">${esc(stratum)}</span>`],
+    [t('i.mode'), `${esc(s.mode)} · ${esc(s.coin)} · ${t('i.fee')}`],
+    [t('i.payout'), esc(s.payoutCash || s.payout)],
+    ...(s.payoutCash ? [['Legacy', esc(s.payout)]] : []),   // only BCH has a second (legacy) form
+    [t('i.signature'), s.signature ? esc(s.signature) : `<span style="color:var(--warn)">${t('i.noSig')}</span>`],
+    ...(s.ports || []).filter(x => x.highdiff).map(x => [t('i.highdiff'), t('i.startDiff', { port: x.port, v: Number(s.highdiff).toLocaleString(LOC()) })]),
+    ['Diff', t('i.diff', { a: s.mindiff ?? '-', b: s.startdiff ?? '-' })],
+    ['Node', n.ok ? `<span style="color:var(--g)">● ${esc(n.chain)}</span> · ${t('pool.height')} ${n.height.toLocaleString(LOC())}${n.ibd ? t('i.syncing') : ''}` : `<span style="color:var(--bad)">● ${esc(n.error ? errT(n.error) : t('pool.noAnswer'))}</span>`],
+    [t('i.rewardNow'), s.nextReward ? `<b style="color:var(--orange)">${s.nextReward.toLocaleString(LOC(), { maximumFractionDigits: 8 })} ${esc(s.coin)}</b>${s.price ? ' ≈ ' + money(s.price.v * s.nextReward, s.price.cur, 0) : ''}${s.nextFees !== null ? `<br><span class="us">${t('i.subsidy', { s: s.nextSubsidy, f: s.nextFees.toLocaleString(LOC(), { maximumFractionDigits: 8 }) })}${n.tpl && n.tpl.txs !== null ? ' · ' + n.tpl.txs + ' Tx' : ''}</span>` : ''}` : '-'],
+    ['Peers', n.ok && n.peers ? `${n.peers.total} <span class="us">${t('i.peersSplit', { o: n.peers.total - n.peers.inbound, i: n.peers.inbound })}</span>${n.peers.ping !== null ? ' · ' + t('i.ping', { ms: Math.round(n.peers.ping) }) : ''}` : '-'],
+    [t('i.nodeVersion'), n.ok && n.version ? `${esc(n.version)}${n.pruned ? ' · <span class="us">pruned' + (n.sizeOnDisk ? ', ' + (n.sizeOnDisk / 1e9).toFixed(1) + ' GB' : '') + '</span>' : ''}` : '-'],
+    [t('i.sharesTotal'), `${Number(p.accepted || 0).toLocaleString(LOC())} · <span style="color:var(--warn)">${Number(p.rejected || 0).toLocaleString(LOC())} rejected</span>`]
+  ].map(r => `<div class="rule"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
+
+  const pev = (state ? state.events : []).filter(e => e.src === 'pool');
+  const lvl = { block: 'blk', warn: 'wrn', bad: 'bad', ok: 'ok', info: '' };
+  $('plog').innerHTML = pev.length
+    ? pev.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span><span>${esc(evText(e))}</span></li>`).join('')
+    : `<li><span class="t">-</span><span>${t('log.empty')}</span></li>`;
+
+  $('plegend').innerHTML = `<span><i style="background:var(--g)"></i>Pool</span>` +
+    wl.map((w, i) => `<span><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(w.short)}</span>`).join('');
+}
+// round axis steps (1, 2, 5, 10, 20, 50 ...) for any value range
+function niceStep(max) {
+  const raw = max / 5, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+function drawPoolChart() {
+  const svg = $('pchart'), msg = $('pchartmsg');
+  const W = Math.max(300, svg.clientWidth || 1000), H = 230, L = 40, R = 10, T = 10, B = 24;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (!phist || !pstate || !pstate.pool) { svg.innerHTML = ''; return; }
+  const rawMax = Math.max(0, ...(phist.series.__pool || []).map(v => v || 0));
+  const div = rawMax >= 1e15 ? 1e15 : 1e12;          // switch axis to PH/s for rented hashrate
+  $('pUnit').textContent = div === 1e15 ? 'PH/s' : 'TH/s';
+  const total = (phist.series.__pool || []).map(v => (v || 0) / div);
+  const n = total.length;
+  if (n < 2) { svg.innerHTML = ''; msg.textContent = t('chart.few'); return; }
+  msg.textContent = '';
+  const wl = pstate.pool.workers || [];
+  const ser = wl.map((w, i) => ({ color: COLORS[i % COLORS.length], vals: (phist.series[w.name] || []).map(v => (v || 0) / div) })).filter(s => s.vals.length === n);
+  let max = Math.max(1, ...total) * 1.15;
+  const stepV = niceStep(max);
+  max = Math.ceil(max / stepV) * stepV;
+  const x = i => L + i * (W - L - R) / (n - 1), y = v => T + (H - T - B) * (1 - v / max);
+  const path = a => a.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  let g = '';
+  for (let v = 0; v <= max + 1e-9; v += stepV)
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${THEME.line}" stroke-dasharray="2 4"/><text x="${L - 8}" y="${y(v) + 4}" fill="${THEME.dim}" font-size="12" text-anchor="end">${+v.toFixed(2)}</text>`;
+  const ticks = Math.max(2, Math.floor((W - L) / 110)), long = phist.step >= 1800e3;
+  for (let k = 0; k <= ticks; k++) {
+    const i = Math.round(k * (n - 1) / ticks), t = new Date(phist.start + i * phist.step);
+    const lab = long ? t.toLocaleDateString(LOC(), { day: '2-digit', month: '2-digit' }) : t.toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' });
+    g += `<text x="${x(i)}" y="${H - 6}" fill="${THEME.mute}" font-size="11" text-anchor="${k === 0 ? 'start' : k === ticks ? 'end' : 'middle'}">${lab}</text>`;
+  }
+  svg.innerHTML = `
+    <defs><linearGradient id="pga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${THEME.g}" stop-opacity=".35"/><stop offset="1" stop-color="${THEME.g}" stop-opacity="0"/></linearGradient>
+    <filter id="pgl"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    ${g}
+    <path d="${path(total)}L${x(n - 1)},${y(0)}L${x(0)},${y(0)}Z" fill="url(#pga)"/>
+    ${ser.length > 1 ? ser.map(s => `<path d="${path(s.vals)}" fill="none" stroke="${s.color}" stroke-width="1.6"/>`).join('') : ''}
+    <path d="${path(total)}" fill="none" stroke="${THEME.g}" stroke-width="2.2" filter="url(#pgl)"/>`;
+}
+async function loadPool() {
+  try { pstate = await (await fetch('api/pool')).json(); renderPool(); } catch {}
+}
+async function loadPoolHistory() {
+  try { phist = await (await fetch(`api/pool/history?range=${prange}`)).json(); } catch { phist = null; }
+  drawPoolChart();
+}
+function setPTab() { document.querySelectorAll('#ptabs button').forEach(b => b.classList.toggle('on', b.dataset.r === prange)); }
+document.querySelectorAll('#ptabs button').forEach(b => b.onclick = () => { prange = b.dataset.r; lsSet('mc.prange', prange); setPTab(); loadPoolHistory(); });
+addEventListener('resize', () => { if (page === 'pool') drawPoolChart(); });
+
+// ---------- polling ----------
+let stateTimer = null;
+async function loadState() {
+  try {
+    const s = await (await fetch('api/state')).json();
+    const changed = !state || state.pollSeconds !== s.pollSeconds;
+    // first start in this browser: follow the language set on the server
+    if (!I18N.normalise(lsGet('mc.lang', '')) && I18N.normalise(s.lang) && s.lang !== lang) { lang = s.lang; applyLang(); }
+    state = s; render();
+    if (page === 'pool' && poolAvail.available) loadPool();
+    if (page === 'log' && changed) loadLog();   // first state: miner names for the filter
+    if (changed) { clearInterval(stateTimer); stateTimer = setInterval(loadState, s.pollSeconds * 1000); }
+  } catch {
+    $('online').textContent = 'SERVER OFFLINE'; $('dot').style.background = 'var(--bad)';
+  }
+}
+
+// ---------- money (electricity cost, coin price) ----------
+const money = (v, cur, dec) => new Intl.NumberFormat(LOC(), { style: 'currency', currencyDisplay: 'narrowSymbol', currency: cur === 'USD' ? 'USD' : 'EUR', minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
+
+// ---------- network scan (settings dialog) ----------
+const hostOnly = ip => String(ip || '').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:80$/, '');
+let scanFound = [];
+async function scanNet() {
+  const box = $('scanBox'), btn = $('scanBtn');
+  box.hidden = false; box.className = 'note'; box.textContent = t('scan.running'); btn.disabled = true;
+  try {
+    const r = await fetch('api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ range: $('scanRange').value.trim() }) });
+    const j = await r.json();
+    if (!r.ok) { box.textContent = t('scan.err.' + (j.error || 'FAILED')); return; }
+    renderScan(j);
+  } catch { box.textContent = t('scan.err.FAILED'); }
+  finally { btn.disabled = false; }
+}
+function renderScan(j) {
+  const box = $('scanBox');
+  scanFound = j.found;
+  // miners that are typed into the dialog but not saved yet count as known as well
+  const typed = new Set([...document.querySelectorAll('#cfgMiners .mi')].map(i => hostOnly(i.value)));
+  const range = j.ranges.join(', ');
+  if (!j.found.length) { box.textContent = t('scan.none', { range }); return; }
+  box.innerHTML = `<div style="margin-bottom:6px">${esc(t('scan.done', { n: j.found.length, s: (j.ms / 1000).toFixed(1), range }))}</div>` +
+    j.found.map((f, i) => {
+      const known = f.known || typed.has(f.ip);
+      const th = f.hash !== null ? ` · ${(f.hash / 1000).toFixed(2)} TH/s` : '';
+      return `<label class="scanrow ${known ? 'known' : ''}"><input type="checkbox" data-idx="${i}" ${known ? 'disabled' : 'checked'}>
+        <span><b style="color:var(--g)">${esc(f.hostname || f.ip)}</b><span class="ip">${esc(f.ip)}</span></span>
+        <span>${esc(f.model)}${th}${known ? ' · ' + esc(t('scan.known')) : ''}</span></label>`;
+    }).join('') +
+    (j.found.some(f => !(f.known || typed.has(f.ip))) ? `<div style="margin-top:8px"><button class="x" style="color:var(--g)" onclick="addScanned()">${esc(t('scan.add'))}</button></div>` : '');
+}
+function addScanned() {
+  const picked = [...document.querySelectorAll('#scanBox input[type=checkbox]:checked')].map(c => scanFound[+c.dataset.idx]).filter(Boolean);
+  if (!picked.length) return;
+  // drop empty placeholder rows, then add the new miners to the list (saved with SPEICHERN / SAVE)
+  document.querySelectorAll('#cfgMiners .row').forEach(r => { if (!r.querySelector('.mi').value.trim()) r.remove(); });
+  for (const f of picked) $('cfgMiners').insertAdjacentHTML('beforeend', rowHtml({ name: f.hostname || f.ip, ip: f.ip }));
+  $('scanBox').className = 'note';
+  $('scanBox').textContent = t('scan.added', { n: picked.length });
+}
+
+// ---------- settings ----------
+let cfgData = null;
+function rowHtml(m) {
+  return `<div class="row" data-id="${esc(m.id || '')}"><input class="mn" placeholder="${esc(t('row.name'))}" value="${esc(m.name || '')}"><input class="mi" placeholder="${esc(t('row.ip'))}" value="${esc(m.ip || '')}"><button class="x" onclick="this.parentElement.remove()">✕</button></div>`;
+}
+function addRow() { $('cfgMiners').insertAdjacentHTML('beforeend', rowHtml({})); }
+async function openCfg() {
+  $('cfgMsg').textContent = ''; $('scanBox').hidden = true;
+  try { cfgData = await (await fetch('api/config')).json(); } catch { return; }
+  $('cfgMiners').innerHTML = cfgData.miners.map(rowHtml).join('');
+  if (!cfgData.miners.length) addRow();
+  $('cTitle').value = cfgData.title; $('cPoll').value = cfgData.pollSeconds; $('cRet').value = cfgData.retentionDays;
+  $('aAsic').value = cfgData.alerts.asicTemp; $('aVr').value = cfgData.alerts.vrTemp; $('aHash').value = cfgData.alerts.hashPct;
+  $('aOff').value = cfgData.alerts.offlineMin; $('aVin').value = cfgData.alerts.minVinPct;
+  $('cKwh').value = (cfgData.cost && cfgData.cost.kwh) || 0; $('cCur').value = (cfgData.cost && cfgData.cost.currency) || 'EUR';
+  $('cRain').checked = lsGet('mc.rain', '1') === '1';
+  $('cTheme').innerHTML = MCTheme.list.map(n => `<option value="${n}">${esc(t('theme.' + n))}</option>`).join('');
+  $('cTheme').value = MCTheme.get();
+  const pp = cfgData.push || {};
+  $('pBlock').checked = pp.block !== false; $('pOff').checked = pp.offline !== false; $('pWarn').checked = pp.warn !== false;
+  $('pOn').checked = pp.online !== false; $('pPool').checked = pp.pool !== false; $('pBest').checked = !!pp.best;
+  $('pCd').value = pp.cooldownMin ?? 15;
+  pushRefresh();
+  $('cHide').value = (cfgData.pool && cfgData.pool.hideDays !== undefined) ? cfgData.pool.hideDays : 7;
+  $('cfg').showModal();
+}
+async function saveCfg() {
+  const miners = [...document.querySelectorAll('#cfgMiners .row')].map(r => ({
+    id: r.dataset.id, name: r.querySelector('.mn').value.trim(), ip: r.querySelector('.mi').value.trim()
+  })).filter(m => m.ip);
+  const body = {
+    title: $('cTitle').value.trim() || 'MINER CONTROL', pollSeconds: +$('cPoll').value, retentionDays: +$('cRet').value,
+    alerts: { asicTemp: +$('aAsic').value, vrTemp: +$('aVr').value, hashPct: +$('aHash').value, offlineMin: +$('aOff').value, minVinPct: +$('aVin').value },
+    cost: { kwh: +$('cKwh').value || 0, currency: $('cCur').value },
+    pool: { hideDays: +$('cHide').value },
+    push: { block: $('pBlock').checked, offline: $('pOff').checked, warn: $('pWarn').checked, online: $('pOn').checked, pool: $('pPool').checked, best: $('pBest').checked, cooldownMin: +$('pCd').value },
+    miners
+  };
+  lsSet('mc.rain', $('cRain').checked ? '1' : '0'); rainOn();
+  setTheme($('cTheme').value);
+  try {
+    const r = await fetch('api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw 0;
+    const saved = await r.json();
+    if (saved.miners.length < miners.length) { $('cfgMsg').textContent = t('cfg.ipIgnored'); }
+    else $('cfg').close();
+    state = null; setTimeout(() => { loadState(); loadHistory(); }, 1500);
+  } catch { $('cfgMsg').textContent = t('cfg.saveFail'); }
+}
+
+// ---------- push notifications ----------
+const pushOk = () => window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const keyBytes = b64 => { const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4)); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+async function currentSub() {
+  if (!pushOk()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function pushRefresh() {
+  const st = $('pushState'), btn = $('pushBtn'), note = $('pushNote');
+  if (!pushOk()) {
+    st.textContent = t('push.na'); btn.disabled = true;
+    note.textContent = window.isSecureContext ? t('push.noSupport') : t('push.needHttps');
+    return;
+  }
+  btn.disabled = false;
+  let info = {}; try { info = await (await fetch('api/push/key')).json(); } catch {}
+  const sub = await currentSub();
+  let on = false;
+  if (sub) { try { on = (await (await fetch('api/push/status', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) })).json()).subscribed; } catch {} }
+  st.innerHTML = on ? `<span style="color:var(--g)">${t('push.active')}</span>` : (Notification.permission === 'denied' ? `<span style="color:var(--bad)">${t('push.blocked')}</span>` : t('push.offState'));
+  btn.textContent = on ? t('push.disable') : t('push.enable');
+  note.textContent = t('push.devices', { n: info.devices || 0 }) + (Notification.permission === 'denied' ? t('push.allow') : '');
+}
+async function togglePush() {
+  const sub = await currentSub();
+  try {
+    if (sub) {
+      await fetch('api/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await sub.unsubscribe();
+    } else {
+      if (await Notification.requestPermission() !== 'granted') return pushRefresh();
+      const { key } = await (await fetch('api/push/key')).json();
+      const reg = await navigator.serviceWorker.ready;
+      const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+      const label = /Android/i.test(navigator.userAgent) ? 'Android' : /iPhone|iPad/i.test(navigator.userAgent) ? 'iOS' : 'PC';
+      await fetch('api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: s.toJSON(), label }) });
+    }
+  } catch (e) { $('pushNote').textContent = t('push.err', { e: e.message }); return; }
+  pushRefresh();
+}
+async function testPush() {
+  try {
+    const r = await (await fetch('api/push/test', { method: 'POST', body: '{}' })).json();
+    $('pushNote').textContent = r.sent ? t('push.testSent', { n: r.sent }) : t('push.testNone', { f: r.failed ? t('push.testFailed', { n: r.failed }) : '' });
+  } catch { $('pushNote').textContent = t('push.testErr'); }
+}
+
+// ---------- colour theme (per device) ----------
+function setTheme(n) {
+  MCTheme.save(n); MCTheme.apply(n);
+  // SVG charts and the rain take the colour when drawn, so redraw what is visible
+  if (page === 'pool') { renderPool(); drawPoolChart(); } else { render(); drawChart(); }
+}
+// live preview while the settings dialog is open
+$('cTheme').addEventListener('change', e => MCTheme.apply(e.target.value));
+// closed without saving (✕ / Esc): back to the saved colour
+$('cfg').addEventListener('close', () => MCTheme.apply(MCTheme.get()));
+
+// ---------- matrix rain ----------
+const c = $('rain'), ctx = c.getContext('2d');
+let cols = [], fs = 16, rainTimer = null;
+function size() { c.width = innerWidth; c.height = innerHeight; cols = Array(Math.ceil(c.width / fs)).fill(0).map(() => Math.random() * -50); }
+size(); addEventListener('resize', size);
+const chars = '01アカサタナハマヤラワ₿⛏ABCDEF0123456789';
+function rain() {
+  ctx.fillStyle = `rgba(${THEME.bgRgb},.08)`; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = THEME.g; ctx.font = fs + 'px monospace';
+  cols.forEach((yv, i) => {
+    ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs, yv * fs);
+    cols[i] = yv * fs > c.height && Math.random() > .975 ? 0 : yv + 1;
+  });
+}
+function rainOn() {
+  clearInterval(rainTimer); ctx.clearRect(0, 0, c.width, c.height);
+  const ok = lsGet('mc.rain', '1') === '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (ok) rainTimer = setInterval(rain, 60);
+}
+rainOn();
+
+// ---------- start ----------
+const tick = () => $('clock').textContent = new Date().toLocaleTimeString(LOC());
+tick(); setInterval(tick, 1000);
+// app install support (only works over HTTPS, e.g. via "tailscale serve")
+if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+// ---------- uptime / availability per miner ----------
+var upData = null;   // var: applyLang() runs before this line
+async function loadUptime() {
+  try { const r = await fetch('/api/uptime', { cache: 'no-store' }); if (r.ok) { upData = await r.json(); renderUptime(); } } catch {}
+}
+function fmtDur(min) {
+  if (min < 1) return '< 1 min';
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h ${min % 60} min`;
+  return `${Math.floor(h / 24)} d ${h % 24} h`;
+}
+function renderUptime() {
+  if (!upData || !$('upRows')) return;
+  const pc = v => v === null ? '<span class="sub">–</span>'
+    : `<span class="${v >= 99 ? 'p-ok' : v >= 95 ? 'p-mid' : 'p-bad'}">${v.toLocaleString(LOC(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</span>`;
+  $('upRows').innerHTML = upData.miners.map(m => `<tr>
+    <td>${esc(m.name)}${m.since ? `<span class="sub">${esc(t('up.since', { d: fmtEvt(m.since) }))}</span>` : ''}</td>
+    <td>${pc(m.d1)}</td><td>${pc(m.d7)}</td><td>${pc(m.d30)}</td>
+    <td>${m.outages}</td><td>${m.outages ? fmtDur(m.longest) : '–'}</td><td>${m.restarts}</td></tr>`).join('');
+  $('upList').innerHTML = upData.recent.length ? upData.recent.map(e => {
+    const what = e.type === 'restart' ? t('up.restart')
+      : `${t(e.type === 'off' ? 'up.off' : 'up.zero')} · ${e.ongoing ? t('up.ongoing') : fmtDur(e.min)}`;
+    return `<li class="${e.type}"><span class="t">${fmtEvt(e.from)}</span><span>${esc(e.name)} · ${esc(what)}</span></li>`;
+  }).join('') : `<li><span class="t">-</span><span>${esc(t('up.none'))}</span></li>`;
+}
+
+// ---------- log page: all events of the last 30 days, filters, hour map ----------
+var lg = { miner: lsGet('mc.lgMiner', 'all'), level: lsGet('mc.lgLevel', 'all'), days: lsGet('mc.lgDays', '7'), from: 0, to: 0, events: [], total: 0, map: null };
+const LG_LEVELS = ['all', 'bad', 'warn', 'ok', 'note', 'block', 'info'];
+function lgFillSelects() {
+  if (!$('lgMiner')) return;
+  const miners = (state && state.miners) || [];
+  const opts = [['all', t('lg.allMiners')], ...miners.map(m => [m.id, m.name]), ...(poolAvail.available ? [['pool', 'Pool']] : [])];
+  if (!opts.some(o => o[0] === lg.miner)) lg.miner = 'all';
+  $('lgMiner').innerHTML = opts.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('');
+  $('lgMiner').value = lg.miner;
+  $('lgLevel').innerHTML = LG_LEVELS.map(v => `<option value="${v}">${esc(t('lg.lv.' + v))}</option>`).join('');
+  $('lgLevel').value = lg.level;
+  $('lgDays').innerHTML = [['1', '24 h'], ['7', t('up.d7')], ['30', t('up.d30')]].map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('');
+  $('lgDays').value = lg.days;
+}
+async function loadLog() {
+  lgFillSelects();
+  const q = new URLSearchParams({ miner: lg.miner, level: lg.level, days: lg.days });
+  if (lg.from) { q.set('from', lg.from); q.set('to', lg.to); q.set('days', '30'); }
+  try {
+    const [ev, mp] = await Promise.all([
+      fetch('/api/events?' + q, { cache: 'no-store' }).then(r => r.json()),
+      lg.miner === 'pool' ? null : fetch('/api/uptime/hours?miner=' + encodeURIComponent(lg.miner), { cache: 'no-store' }).then(r => r.json())
+    ]);
+    lg.events = ev.events; lg.total = ev.total; lg.map = mp;
+  } catch {}
+  renderLog();
+}
+function renderLog() {
+  if (!$('lgList')) return;
+  const lvl = { block: 'blk', warn: 'wrn', bad: 'bad', ok: 'ok', info: '', note: 'lnote' };
+  const showName = lg.miner === 'all';
+  $('lgCount').textContent = lg.total > lg.events.length ? `(${lg.events.length} / ${lg.total})` : `(${lg.total})`;
+  $('lgList').innerHTML = lg.events.length ? lg.events.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span>${showName ? `<span class="m">${esc(e.src === 'pool' ? 'Pool' : e.miner || '-')}</span>` : ''}<span>${esc(evText(e))}</span></li>`).join('')
+    : `<li><span class="t">-</span><span>${esc(t('lg.none'))}</span></li>`;
+  const chip = $('lgHour');
+  chip.hidden = !lg.from;
+  if (lg.from) chip.textContent = `${fmtEvt(lg.from)} – ${new Date(lg.to).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' })} ✕`;
+  // hour map (not for the pool: ckpool has no per-minute availability)
+  $('lgMapBox').hidden = !lg.map;
+  if (!lg.map) return;
+  const rs = new Set(lg.map.restarts.map(x => { const d = new Date(x); d.setMinutes(0, 0, 0); return d.getTime(); }));
+  let html = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="h">${h % 3 === 0 ? h : ''}</span>`).join('');
+  // rows follow the chosen period: 24 h = today and yesterday (the last 24 h span two days), 7 or 30 days
+  const nDays = lg.days === '1' ? 2 : Number(lg.days) || 30;
+  $('lgMapTitle').textContent = t('lg.map' + (lg.days === '1' ? '1' : lg.days === '7' ? '7' : '30'));
+  lg.map.days.slice(0, nDays).forEach((day, di) => {
+    html += `<span class="d">${new Date(day).toLocaleDateString(LOC(), { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>`;
+    for (let h = 0; h < 24; h++) {
+      const s = lg.map.rows[di][h], start = day + h * 3600000;
+      const sel = lg.from === start ? ' sel' : '';
+      html += `<i class="s${s === '.' ? '' : s}${rs.has(start) ? ' rs' : ''}${sel}" data-h="${start}" title="${esc(fmtEvt(start) + ' · ' + t('lg.st.' + (s === '.' ? 'none' : s)))}"></i>`;
+    }
+  });
+  $('lgMap').innerHTML = html;
+  $('lgLegend').innerHTML = [['s1', 'lg.st.1'], ['sa', 'lg.st.a'], ['sb', 'lg.st.b'], ['sx', 'lg.st.x'], ['sp', 'lg.st.p'], ['', 'lg.st.none']]
+    .map(([c, k]) => `<span><i class="${c}" style="${c ? '' : 'background:rgba(var(--line-rgb),.25)'}"></i>${esc(t(k))}</span>`).join('')
+    + `<span><i style="background:rgba(var(--line-rgb),.25)"><b style="position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#fff"></b></i>${esc(t('lg.st.restart'))}</span>`;
+}
+$('lgMiner').onchange = e => { lg.miner = e.target.value; lsSet('mc.lgMiner', lg.miner); loadLog(); };
+$('lgLevel').onchange = e => { lg.level = e.target.value; lsSet('mc.lgLevel', lg.level); loadLog(); };
+$('lgDays').onchange = e => { lg.days = e.target.value; lsSet('mc.lgDays', lg.days); lg.from = lg.to = 0; loadLog(); };
+// click an hour in the map: show only the events of that hour (click again or the chip to clear)
+$('lgMap').onclick = e => {
+  const h = e.target.dataset && e.target.dataset.h; if (!h) return;
+  if (lg.from === +h) lg.from = lg.to = 0; else { lg.from = +h; lg.to = +h + 3600000; }
+  loadLog();
+};
+$('lgHour').onclick = () => { lg.from = lg.to = 0; loadLog(); };
+// CSV download of the entries currently shown (opens in Excel / LibreOffice)
+$('lgCsv').onclick = () => {
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  const rows = [['time', 'miner', 'level', 'message'].map(q).join(';')]
+    .concat(lg.events.map(e => [new Date(e.t).toLocaleString(LOC()), e.src === 'pool' ? 'Pool' : e.miner || '', e.level, evText(e)].map(q).join(';')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = `miner-control-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+applyLang(); setTab(); setPTab(); applyChart(); applyPChart(); setPage(page); loadState(); loadHistory(); loadUptime();
+setInterval(() => { if (page === 'pool') loadPoolHistory(); else if (page === 'log') loadLog(); else { loadHistory(); loadUptime(); } }, 60000);
+</script>
+</body>
+</html>
