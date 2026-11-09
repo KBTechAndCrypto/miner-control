@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2 – 2026-11-09
+- Fix: push notifications for workers whose names differ only by a number (e.g. `Rental` / `Rental2`) were dropped by the cooldown. The cooldown now separates messages by name, only measured values are ignored.
+
 ## 1.4.1 – 2026-11-08
 - Coin is detected from the node (Bitcoin Cash Node etc. → BCH, Bitcoin Core / Knots → BTC): correct price, label and address display for BTC ckpools. Fallback: `MC_COIN`.
 

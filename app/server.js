@@ -86,11 +86,11 @@ function addEvent(level, minerId, k, a, src = 'miner') {
   store.events.unshift({ t: Date.now(), level, miner: m ? m.name : '', k, a, text, src });
   if (store.events.length > MAX_EVENTS) store.events.length = MAX_EVENTS;
   storeDirty = true;
-  notify(level, m ? m.name : '', text, src);
+  notify(level, m ? m.name : '', text, src, k, a);
 }
 
 // push notification for an event, filtered by the settings in config.push
-function notify(level, miner, text, src) {
+function notify(level, miner, text, src, k, a) {
   const p = config.push || {};
   const clean = String(text);
   if (src === 'pool' && level !== 'block' && !p.pool) return;
@@ -105,7 +105,11 @@ function notify(level, miner, text, src) {
   if (!e || !e[0]) return;
   const body = level === 'block' ? `${miner ? miner + ': ' : ''}${clean}` : clean;
   push.send(e[1], body, {
-    key: `${miner}|${level}|${clean.replace(/[\d.,]+/g, '')}`,
+    // cooldown key = same kind of message about the same thing. Measured values (temperatures, minutes …)
+    // are left out so a changing number does not count as a new message, but names stay in:
+    // "Rental" and "Rental2" connecting are two different messages.
+    key: k ? `${miner}|${level}|${k}|${Object.values(a || {}).filter(v => typeof v === 'string' && !/^[\d.,\s%]*$/.test(v)).join('|')}`
+           : `${miner}|${level}|${clean.replace(/[\d.,]+/g, '')}`,
     // blocks and new best difficulties are rare and every one is news: no cooldown, each gets its own notification
     cooldownMin: (level === 'block' || level === 'info') ? 0 : Number(p.cooldownMin ?? 15),
     urgent: e[2], tag: (level === 'block' || level === 'info') ? level + '-' + Date.now() : undefined
