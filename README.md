@@ -5,6 +5,8 @@ Matrix-green look, German and English, installable as a phone app with push noti
 
 ![Miner page](docs/images/miner.png)
 
+> 🚀 **New here? No coding needed** – follow the [Quick start for beginners](docs/Quickstart_EN.md) (Windows, Linux, Raspberry Pi, Docker, CasaOS). 🇩🇪 [Schnellstart auf Deutsch](docs/Schnellstart_DE.md)
+
 > 🇩🇪 Deutsche Kurzbeschreibung weiter unten, ausführliche Anleitung in [`docs/Anleitung_DE.md`](docs/Anleitung_DE.md).
 
 ## Features
@@ -105,6 +107,16 @@ Windows autostart, the systemd service on a real system, the Docker Tailscale pr
 - Anleitung: [`docs/Anleitung_DE.md`](docs/Anleitung_DE.md)
 - Die Einstellungen haben **kein Passwort**: nur im Heimnetz oder per Tailscale (`serve`, nicht `funnel`) nutzen, nie ins Internet stellen.
 - Die Seite POOL gibt es nur mit eigenem ckpool. Die Seite MINER funktioniert mit jedem Pool.
+
+## FAQ
+
+**Do I need to code?** No. Download, unzip, start – see the [Quick start](docs/Quickstart_EN.md).
+
+**Does it run on my phone?** The program runs on a computer in your home network that stays on (PC, mini PC, server, Raspberry Pi). Your phone is the display – in the browser or installed as an app.
+
+**Does it change anything on my miners?** No, it only reads. Miner settings stay in AxeOS.
+
+**Is it free?** Yes, free and open source (GPL-3.0).
 
 ## Support
 
