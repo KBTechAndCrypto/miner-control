@@ -106,6 +106,15 @@ Windows autostart, the systemd service on a real system, the Docker Tailscale pr
 - Die Einstellungen haben **kein Passwort**: nur im Heimnetz oder per Tailscale (`serve`, nicht `funnel`) nutzen, nie ins Internet stellen.
 - Die Seite POOL gibt es nur mit eigenem ckpool. Die Seite MINER funktioniert mit jedem Pool.
 
+## Support
+
+Miner Control is free and stays free. If it is useful to you and you want to say thanks, a small tip is welcome – no obligation:
+
+- **BTC:** `bc1q34jw68wwt20qkn09swl23wa6amhma6jekuxk48`
+- **BCH:** `bitcoincash:qz9x4xc0089v2g9f2l78n2kgftumdjqtmyeuyms2wm`
+
+⭐ A star on GitHub or feedback in the Issues helps too!
+
 ## License
 
 Copyright (C) 2026 Miner Control contributors
