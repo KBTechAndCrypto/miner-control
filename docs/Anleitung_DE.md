@@ -300,3 +300,64 @@ Hinweise:
 ### BTC oder BCH
 
 Das Dashboard erkennt die Münze automatisch an der Node (Bitcoin Cash Node, ABC, Flowee, bchd → **BCH**; Bitcoin Core, Knots → **BTC**). Davon hängen Kurs, Bezeichnung bei „Belohnung jetzt“ und die Adressanzeige ab (CashAddr nur bei BCH). Ist die Node nicht erreichbar oder unbekannt, gilt die Variable `MC_COIN` (z. B. `MC_COIN=BTC`), sonst BCH.
+
+## 17. Verfügbarkeit (Uptime) der Miner
+
+Unten auf der Seite MINER zeigt der Kasten **Verfügbarkeit** pro Miner:
+
+- **24 h / 7 Tage / 30 Tage:** Anteil der Zeit, in der der Miner gehasht hat (grün ab 99 %, gelb ab 95 %, sonst rot).
+- **Ausfälle**, **längster** Ausfall und **Neustarts** der letzten 30 Tage.
+- **Letzte Ausfälle und Neustarts** mit Uhrzeit – so erkennst du Muster (immer zur gleichen Uhrzeit? alle Miner gleichzeitig → eher Strom, Router oder WLAN).
+
+So wird gezählt (jede Minute bekommt einen Zustand):
+
+| Zustand | Bedeutung | zählt als Ausfall |
+|---|---|---|
+| hasht | antwortet und liefert Hashrate | nein |
+| **offline** | antwortet in der ganzen Minute nicht | ja |
+| **kein Hashing** | antwortet, liefert aber 0 bzw. unter 5 % der Soll-Hashrate | ja |
+| Neustart | bis 2 min nach dem Hochfahren noch ohne Hashrate, sowie die Offline-Minuten direkt vor dem Hochfahren | nein (wird nicht mitgerechnet) |
+| pausiert | Mining in AxeOS pausiert | nein (wird nicht mitgerechnet) |
+| unbekannt | das Dashboard selbst lief nicht | nein (wird nicht mitgerechnet) |
+
+**Nach einem Neustart hat der Miner 2 Minuten Zeit**, bis er hasht. Hasht er danach immer noch nicht, zählt das ab dann als Ausfall „kein Hashing“.
+
+**Neustarts** werden an der Laufzeit des Miners erkannt (sie springt zurück), auch wenn der Miner dabei kaum weg war oder das Dashboard in der Zeit aus war. Sie stehen zusätzlich im Event-Log, werden aber **nicht** als Push gemeldet (ein Neustart kann gewollt sein).
+
+Die Zählung beginnt mit Version 1.5.0; ältere Zeiten sind „unbekannt“. Daten: `data/uptime.json`, 30 Tage.
+
+## 18. Seite LOG – alle Einträge der letzten 30 Tage
+
+Oben über **LOG** (neben MINER und POOL) siehst du alle Einträge der letzten 30 Tage.
+
+- **Filter:** Miner (alle, ein bestimmter Miner oder Pool), Art (Ausfälle, Warnungen, wieder online, Neustarts, Blockfunde, Best Difficulty) und Zeitraum (24 h, 7 Tage, 30 Tage). Die Auswahl merkt sich der Browser.
+- **Übersicht:** ein Raster passend zum Zeitraum – 24 h (heute und gestern), 7 oder 30 Tage (Zeilen) mal 24 Stunden (Spalten). Grün = keine Ausfälle, gelb = teilweise, rot = überwiegend ausgefallen, weißer Punkt = Neustart. Bei „Alle Miner“ zählt pro Stunde der schlechteste Miner. So siehst du auf einen Blick, ob Ausfälle immer zur gleichen Uhrzeit passieren.
+- **Stunde anklicken:** zeigt nur die Einträge dieser Stunde. Nochmal klicken oder auf das ✕ am Filter, um alles zu sehen.
+- **⬇ CSV:** lädt die angezeigten Einträge als Tabelle herunter (öffnet sich in Excel oder LibreOffice).
+
+Das Event-Log wird jetzt 30 Tage aufbewahrt (höchstens 5000 Einträge), statt nur die letzten 300.
+
+### Startzeit nach einem Neustart
+
+Nach jedem Neustart misst das Dashboard, **wie lange es dauert, bis der Miner wieder hasht** (genau auf etwa ein Abfrage-Intervall). Im Kasten Verfügbarkeit zeigt die Spalte **Start** den letzten Wert und darunter den Durchschnitt der letzten 30 Tage. Ist der letzte Start deutlich langsamer als üblich (mindestens 1,5-mal so lang und 15 s mehr, ab 3 Messungen), wird er gelb. So fällt ein Miner auf, der immer länger zum Hochfahren braucht.
+
+Im Log steht dann z. B. „Neustart – hasht wieder nach 48 s“. Hasht ein Miner nach 2 Minuten noch nicht, kommt „Neustart – nach 2 min noch keine Hashrate“. Wurde der Neustart erst spät bemerkt (Miner war länger nicht erreichbar oder das Dashboard aus), lässt sich die Startzeit nicht messen; dann steht nur „Neustart erkannt“.
+
+### Event-Log auf den Seiten MINER und POOL
+
+Die Kästen **Event Log** und **Pool Event Log** zeigen nur so viele der neuesten Einträge, wie neben den Kasten rechts passen, ohne eigenen Scrollbalken. Alle Einträge: Link **„Alle Einträge im LOG ›“** darunter – er öffnet die Seite LOG gleich mit passendem Filter (auf der Pool-Seite „Pool“).
+
+### Pool-Wechsel der Miner im Log
+
+Das Dashboard merkt sich, mit welchem Pool jeder Miner verbunden ist, und schreibt Änderungen ins Log:
+
+| Eintrag | Wann | Push |
+|---|---|---|
+| verbunden mit … | einmal, wenn ein Miner zum ersten Mal abgefragt wird (auch nach dem Update auf 1.6.0) | nein |
+| **Fallback-Pool aktiv: … – Hauptpool nicht erreichbar?** | der Miner ist auf seinen Fallback-Pool gesprungen | ja, unter „Warnungen“ |
+| wieder auf dem Hauptpool: … | zurück vom Fallback | ja, unter „wieder online“ |
+| **Pool getrennt: …** / Pool wieder verbunden: … | Dual-Pool: einer der beiden Pools verliert die Verbindung bzw. ist wieder da | ja („Warnungen“ bzw. „wieder online“) |
+| Pool geändert: alt → neu | Pool-Adresse in AxeOS geändert | nein |
+| Pool-Modus: Dual-Pool / 1 Pool | zwischen einem und zwei Pools umgeschaltet | nein |
+
+Eine Änderung muss bei **zwei Abfragen hintereinander** zu sehen sein – ein kurzer Aussetzer erzeugt keinen Eintrag. Auf der Seite LOG gibt es dafür die Art **„Pool-Wechsel der Miner“**. Ändert sich der Pool, während das Dashboard aus ist, wird das beim nächsten Start nachgetragen.

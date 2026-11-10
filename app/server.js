@@ -12,6 +12,7 @@ const pool = require('./pool');
 const push = require('./push');
 const i18n = require('./public/i18n.js');
 const scan = require('./scan');
+const uptime = require('./uptime');
 
 const [NODE_MAJOR] = process.versions.node.split('.').map(Number);
 if (NODE_MAJOR < 18) { console.error(`Miner Control needs Node.js 18 or newer (found ${process.versions.node}).`); process.exit(1); }
@@ -23,7 +24,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
-const MAX_EVENTS = 300;
+const MAX_EVENTS = 5000;          // events are also pruned to 30 days (see pruneEvents)
+const EVENT_DAYS = 30;
 const FETCH_TIMEOUT_MS = 5000;
 
 const PROFILE_NAMES = { 0: '🍃 ECO', 1: '⚖️ Normal', 2: '⚡ Power', 3: '⚙️ Custom', 4: '🌙 Silent' };
@@ -80,10 +82,13 @@ const T = (key, args) => i18n.tr(config.lang, key, args);
 
 // Events are stored as a translation key + values (k, a), so the browser can show them in its own
 // language. 'text' is the same message in the server language (fallback, and used for push).
+// "48 s", "3 min 05 s" - language neutral, used in event texts
+function fmtSecs(s) { return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; }
+
 function addEvent(level, minerId, k, a, src = 'miner') {
   const m = config.miners.find(x => x.id === minerId);
   const text = T(k, a);
-  store.events.unshift({ t: Date.now(), level, miner: m ? m.name : '', k, a, text, src });
+  store.events.unshift({ t: Date.now(), level, id: m ? m.id : '', miner: m ? m.name : '', k, a, text, src });
   if (store.events.length > MAX_EVENTS) store.events.length = MAX_EVENTS;
   storeDirty = true;
   notify(level, m ? m.name : '', text, src, k, a);
@@ -219,6 +224,38 @@ function checkEvents(m, d) {
   }
 }
 
+// Pool changes: fallback pool active / back on the main pool, pool lost / back (dual pool),
+// pool address or mode changed. A change must be seen on 2 polls in a row (no entries for a short hiccup).
+// The last known state is kept in store.track, so changes while the dashboard was off are noticed too.
+function poolState(d) {
+  const ps = d.pools || [];
+  return { dual: ps.length > 1, pools: ps.map(p => ({ host: p.host, fb: !!p.fallback, up: p.connected !== false })) };
+}
+function checkPools(m, st, d) {
+  const now = poolState(d), sig = JSON.stringify(now);
+  const t = store.track[m.id] || (store.track[m.id] = {});
+  if (!t.pools) { t.pools = now; storeDirty = true; addEvent('note', m.id, 'ev.poolNow', { pool: now.pools.map(p => p.host).join(' + ') }); return; }
+  if (sig === JSON.stringify(t.pools)) { st.poolCand = null; return; }
+  if (st.poolCand !== sig) { st.poolCand = sig; return; }      // first sighting: wait for the next poll
+  st.poolCand = null;
+  const old = t.pools; t.pools = now; storeDirty = true;
+  const hosts = x => x.pools.map(p => p.host).join(' + ');
+  if (old.dual !== now.dual) return addEvent('note', m.id, 'ev.poolMode', { mode: now.dual ? 'Dual-Pool' : '1 Pool', pool: hosts(now) });
+  if (!now.dual) {
+    const o = old.pools[0] || {}, n = now.pools[0] || {};
+    if (!o.fb && n.fb) return addEvent('warn', m.id, 'ev.poolFallback', { pool: n.host });
+    if (o.fb && !n.fb) return addEvent('ok', m.id, 'ev.poolPrimary', { pool: n.host });
+    if (o.host !== n.host) return addEvent('note', m.id, 'ev.poolChanged', { old: o.host || '-', pool: n.host });
+    return;
+  }
+  if (hosts(old) !== hosts(now)) return addEvent('note', m.id, 'ev.poolChanged', { old: hosts(old), pool: hosts(now) });
+  now.pools.forEach((p, i) => {
+    const o = old.pools[i] || {};
+    if (o.up && !p.up) addEvent('warn', m.id, 'ev.poolLost', { pool: p.host });
+    if (!o.up && p.up) addEvent('ok', m.id, 'ev.poolBack', { pool: p.host });
+  });
+}
+
 function checkAlerts(m, st, d, silent) {
   const a = config.alerts, now = new Map();
   // an alert is {k: translation key, a: values}; 'key' identifies it, so the same alert with a new value is not a new alert
@@ -277,8 +314,15 @@ async function pollMiner(m) {
     st.online = true; st.everSeen = true; st.lastSeen = Date.now(); st.lastError = ''; st.data = d;
     checkEvents(m, d);
     checkAlerts(m, st, d, firstPoll);
+    checkPools(m, st, d);
     addSample(m.id, d);
+    const u = uptime.poll(m.id, d);
+    // restarts are only logged, not pushed (they may have been done on purpose)
+    if (u.restart) addEvent('note', m.id, 'ev.restart', { min: Math.max(0, Math.round((Date.now() - u.restart) / 60000)) });
+    if (u.booted) addEvent('note', m.id, 'ev.restartBoot', { d: fmtSecs(u.booted.s) });
+    if (u.slow) addEvent('note', m.id, 'ev.restartSlow', {});
   } catch (e) {
+    uptime.poll(m.id, null);
     st.lastError = e.name === 'TimeoutError' ? 'TIMEOUT' : (e.cause && e.cause.code) || e.message;   // codes are translated on display
     const offlineAfter = config.alerts.offlineMin * 60000;
     if (st.online && Date.now() - st.lastSeen > offlineAfter) {
@@ -306,7 +350,32 @@ setInterval(() => {
   for (const id of Object.keys(bucket)) if (bucket[id].minute !== minute) flushBucket(id);
   pruneHistory();
   writeJson(HISTORY_FILE, history);
+  uptime.tick(config.miners.map(m => m.id));
+  pruneEvents();
 }, 60000);
+
+// keep the event log for 30 days (newest first)
+function pruneEvents() {
+  const cutoff = Date.now() - EVENT_DAYS * 86400000;
+  let n = store.events.length;
+  while (n && store.events[n - 1].t < cutoff) n--;
+  if (n !== store.events.length) { store.events.length = n; storeDirty = true; }
+}
+
+// event log with filters for the log viewer: miner = all | pool | <id>, level = all | <level>, days, from/to (ms)
+function eventsFor(q) {
+  const days = Math.min(EVENT_DAYS, Math.max(1, Number(q.get('days')) || EVENT_DAYS));
+  const from = Math.max(Number(q.get('from')) || 0, Date.now() - days * 86400000);
+  const to = Number(q.get('to')) || Infinity;
+  const miner = q.get('miner') || 'all', level = q.get('level') || 'all';
+  const m = config.miners.find(x => x.id === miner);
+  const list = store.events.filter(e => e.t >= from && e.t < to
+    // 'pools' = the pool-change entries of the miners (fallback, lost/back, changed)
+    && (level === 'all' || (level === 'pools' ? e.src !== 'pool' && /^ev\.pool[A-Z]/.test(e.k || '') : e.level === level))
+    && (miner === 'all' || (miner === 'pool' ? e.src === 'pool'
+      : e.src !== 'pool' && (e.id ? e.id === miner : !!m && e.miner === m.name))));
+  return { total: list.length, events: list.slice(0, 3000) };
+}
 
 // ---------- API ----------
 const RANGES = { '1h': [3600e3, 60e3], '6h': [6 * 3600e3, 120e3], '24h': [86400e3, 300e3], '7d': [7 * 86400e3, 1800e3], '30d': [30 * 86400e3, 7200e3] };
@@ -502,6 +571,9 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/pool/history') return send(res, 200, 'application/json', JSON.stringify(pool.history(url.searchParams.get('range'))));
   if (req.method === 'GET' && url.pathname === '/api/summary') return send(res, 200, 'application/json', JSON.stringify(summaryJson()));
   if (req.method === 'GET' && url.pathname === '/api/state') return send(res, 200, 'application/json', JSON.stringify(stateJson()));
+  if (req.method === 'GET' && url.pathname === '/api/events') return send(res, 200, 'application/json', JSON.stringify(eventsFor(url.searchParams)));
+  if (req.method === 'GET' && url.pathname === '/api/uptime/hours') return send(res, 200, 'application/json', JSON.stringify(uptime.hours(config.miners, url.searchParams.get('miner') || 'all')));
+  if (req.method === 'GET' && url.pathname === '/api/uptime') return send(res, 200, 'application/json', JSON.stringify(uptime.report(config.miners)));
   if (req.method === 'GET' && url.pathname === '/api/history') return send(res, 200, 'application/json', JSON.stringify(historyFor(url.searchParams.get('range'))));
   if (req.method === 'GET' && url.pathname === '/api/config') return send(res, 200, 'application/json', JSON.stringify(config));
   if (req.method === 'POST' && url.pathname === '/api/config') {
@@ -528,13 +600,14 @@ const server = http.createServer((req, res) => {
 
 function shutdown() {
   for (const id of Object.keys(bucket)) flushBucket(id);
-  try { writeJson(HISTORY_FILE, history); writeJson(STORE_FILE, store); } catch {}
+  try { writeJson(HISTORY_FILE, history); writeJson(STORE_FILE, store); uptime.tick(config.miners.map(m => m.id)); } catch {}
   process.exit(0);
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 push.init(DATA_DIR);
+uptime.init(DATA_DIR);
 pool.init({ store, addEvent, markDirty: () => { storeDirty = true; }, getConfig: () => config, dataDir: DATA_DIR });
 server.listen(PORT, () => console.log(`Miner Control listening on port ${PORT}, ${config.miners.length} miner(s) configured, data in ${DATA_DIR}`));
 schedule();

@@ -108,14 +108,56 @@
   a.open:hover{background:var(--txt)}
 
   .bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
-  .log{padding:14px 16px}
+  .log{padding:14px 16px;display:flex;flex-direction:column}
   .log h2,.alerts h2{margin:0 0 10px;font-size:14px}
-  .log ul{list-style:none;margin:0;padding:0;font-size:13px;max-height:230px;overflow:auto}
+  /* the list fills the box next to it without its own scrollbar: as many of the newest entries as fit,
+     the rest is on the LOG page. Absolutely positioned so it never stretches the row itself. */
+  .log .lwrap{flex:1;position:relative;min-height:240px}
+  .log ul{list-style:none;margin:0;padding:0;font-size:13px;position:absolute;inset:0;overflow:hidden}
+  .log .more{margin-top:8px;font-size:12px;text-align:right}
+  .log .more a{color:var(--g);cursor:pointer;text-decoration:none;border-bottom:1px dashed var(--g-mute)}
+  .log .more a:hover{color:var(--txt)}
   .log li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
   .log li .t{color:var(--g-mute);flex:0 0 auto}
   .log li.blk{color:var(--orange)}
   .log li.wrn{color:var(--warn)}
   .alerts{padding:14px 16px}
+  .lgfilter{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .lgfilter label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--g-mute)}
+  .lgfilter select{min-width:150px}
+  /* 24 hour columns always fit the width (they may get narrow on a phone, but no scrollbar) */
+  .lgmap{display:grid;grid-template-columns:auto repeat(24,minmax(0,1fr));gap:2px;font-size:11px}
+  .lgmap .d{color:var(--g-mute);padding-right:8px;white-space:nowrap;line-height:14px}
+  .lgmap .h{color:var(--g-mute);text-align:center;font-size:10px}
+  .lgmap i{display:block;height:14px;min-width:0;background:rgba(var(--line-rgb),.25);cursor:pointer;position:relative}
+  .lgmap i.s1,.lglegend i.s1{background:rgba(var(--g-rgb),.55)} .lgmap i.sa,.lglegend i.sa{background:var(--warn);opacity:.55}
+  .lgmap i.sb,.lglegend i.sb{background:var(--warn)} .lgmap i.sx,.lglegend i.sx{background:var(--bad)} .lgmap i.sp,.lglegend i.sp{background:rgba(var(--g-rgb),.15)}
+  .lgmap i.rs::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#fff}
+  .lgmap i:hover,.lgmap i.sel{outline:1px solid var(--txt)}
+  .lglegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--g-mute)}
+  .lglegend i{display:inline-block;width:12px;height:12px;vertical-align:-2px;margin-right:5px;position:relative}
+  .lglist{list-style:none;margin:0;padding:0;font-size:13px;max-height:520px;overflow:auto}
+  .lglist li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
+  .lglist li .t{color:var(--g-mute);flex:0 0 auto;min-width:118px}
+  .lglist li .m{flex:0 0 auto;min-width:120px;color:var(--txt)}
+  .lglist li.blk{color:var(--orange)} .lglist li.wrn{color:var(--warn)} .lglist li.bad{color:var(--bad)} .lglist li.lnote{color:var(--g-dim)}
+  @media (max-width:600px){.lglist li{flex-wrap:wrap;gap:2px 10px}.lglist li .t,.lglist li .m{min-width:0}.lglist li > span:last-child{flex-basis:100%}}
+  @media (max-width:600px){.lgmap{gap:1px}.lgmap .d{padding-right:4px;font-size:10px}}
+  .lgchip{font-size:12px;border:1px solid var(--g);padding:2px 8px;margin-left:8px;cursor:pointer;color:var(--g)}
+  .uptime{padding:14px 16px;margin-top:16px}
+  .uptime h2{margin:0 0 10px;font-size:14px}
+  .upgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+  .uptab{overflow-x:auto}
+  .uptime table{width:100%;border-collapse:collapse;font-size:13px}
+  .uptime th{color:var(--g-mute);font-weight:normal;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  .uptime td{text-align:right;padding:6px;border-bottom:1px dashed rgba(var(--line-rgb),.6);white-space:nowrap}
+  .uptime th:first-child,.uptime td:first-child{text-align:left}
+  .uptime td .sub{display:block;color:var(--g-mute);font-size:11px}
+  .uptime .p-ok{color:var(--g)} .uptime .p-mid{color:var(--warn)} .uptime .p-bad{color:var(--bad)}
+  .uptime ul{list-style:none;margin:6px 0 0;padding:0;font-size:13px;max-height:200px;overflow:auto}
+  .uptime li{padding:5px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6);display:flex;gap:10px}
+  .uptime li .t{color:var(--g-mute);flex:0 0 auto}
+  .uptime li.off{color:var(--bad)} .uptime li.zero{color:var(--warn)}
   .rule{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed rgba(var(--line-rgb),.6)}
   .rule span:last-child{color:var(--g)}
   .note{font-size:12px;color:var(--g-mute);margin-top:10px}
@@ -133,7 +175,7 @@
   .demo{position:fixed;right:12px;bottom:10px;z-index:3;font-size:10px;color:var(--g-mute)}
 
   @media (max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.miners{grid-template-columns:1fr}}
-  @media (max-width:760px){.bottom{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:760px){.bottom,.upgrid{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}}
   @media (max-width:520px){.stats{grid-template-columns:1fr 1fr}.stat .val{font-size:21px}.m-hash .big{font-size:28px}
     .row{grid-template-columns:1fr}.brand h1{font-size:18px}}
 
@@ -220,7 +262,7 @@
       <h1 class="glow">&gt;_ <span id="title">MINER CONTROL</span><span class="cursor"></span></h1>
       <span class="sub" data-i="brand.sub"></span>
     </div>
-    <nav class="pages" id="pages"><button data-p="miner">MINER</button><button data-p="pool">POOL</button></nav>
+    <nav class="pages" id="pages"><button data-p="miner">MINER</button><button data-p="pool">POOL</button><button data-p="log">LOG</button></nav>
     <div class="chips">
       <span class="chip"><span class="dot" id="dot"></span><span id="online">-</span></span>
       <span class="chip" id="poll">POLL: -</span>
@@ -256,13 +298,23 @@
   <section class="bottom">
     <div class="panel log">
       <h2 class="glow">▸ Event Log</h2>
-      <ul id="log"></ul>
+      <div class="lwrap"><ul id="log"></ul></div>
+      <div class="more"><a onclick="openLog('all')" data-i="log.more"></a></div>
     </div>
     <div class="panel alerts">
       <h2 class="glow" data-i="alerts.title"></h2>
       <div id="rules"></div>
       <div class="note" data-i="alerts.note"></div>
     </div>
+  </section>
+
+  <section class="panel uptime" id="uptimeBox">
+    <h2 class="glow" data-i="up.title"></h2>
+    <div class="upgrid">
+      <div class="uptab"><table><thead><tr><th data-i="up.miner"></th><th data-i="up.d1"></th><th data-i="up.d7"></th><th data-i="up.d30"></th><th data-i="up.outages"></th><th data-i="up.longest"></th><th data-i="up.restarts"></th><th data-i="up.boot" data-it="up.bootHint"></th></tr></thead><tbody id="upRows"></tbody></table></div>
+      <div><div class="label" data-i="up.recent"></div><ul id="upList"></ul></div>
+    </div>
+    <div class="note" data-i="up.note"></div>
   </section>
   </div>
 
@@ -303,7 +355,8 @@
   <section class="bottom">
     <div class="panel log">
       <h2 class="glow">▸ Pool Event Log</h2>
-      <ul id="plog"></ul>
+      <div class="lwrap"><ul id="plog"></ul></div>
+      <div class="more"><a onclick="openLog('pool')" data-i="log.more"></a></div>
     </div>
     <div class="panel alerts info">
       <h2 class="glow">▸ Pool &amp; Node</h2>
@@ -311,6 +364,27 @@
     </div>
   </section>
   </div>
+
+  </div>
+  <div id="pageLog" hidden>
+  <section class="panel ppanel">
+    <h2 class="glow" data-i="lg.title"></h2>
+    <div class="lgfilter">
+      <label><span data-i="lg.miner"></span><select id="lgMiner"></select></label>
+      <label><span data-i="lg.kind"></span><select id="lgLevel"></select></label>
+      <label><span data-i="lg.range"></span><select id="lgDays"></select></label>
+      <button class="btn ghost" id="lgCsv" data-i="lg.csv"></button>
+    </div>
+  </section>
+  <section class="panel ppanel" id="lgMapBox">
+    <h2 class="glow" id="lgMapTitle"></h2>
+    <div class="lgmap" id="lgMap"></div>
+    <div class="lglegend" id="lgLegend"></div>
+  </section>
+  <section class="panel ppanel">
+    <h2 class="glow"><span data-i="lg.entries"></span> <span class="hint" id="lgCount"></span> <span class="lgchip" id="lgHour" hidden></span></h2>
+    <ul class="lglist" id="lgList"></ul>
+  </section>
   </div>
 </div>
 
@@ -389,6 +463,8 @@ function applyLang() {
   document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
   document.querySelectorAll('[data-it]').forEach(e => e.title = t(e.dataset.it));
   renderPoolHint();
+  renderUptime();
+  if (typeof lgFillSelects === 'function' && $('pageLog') && !$('pageLog').hidden) { lgFillSelects(); renderLog(); }
   document.querySelectorAll('[data-ip]').forEach(e => e.placeholder = t(e.dataset.ip));
   document.querySelectorAll('#cfgMiners .mn').forEach(e => e.placeholder = t('row.name'));
   document.querySelectorAll('#cfgMiners .mi').forEach(e => e.placeholder = t('row.ip'));
@@ -566,6 +642,7 @@ function render() {
   $('log').innerHTML = mev.length
     ? mev.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span><span>${esc(e.miner)}${e.miner ? ' · ' : ''}${esc(evText(e))}</span></li>`).join('')
     : `<li><span class="t">-</span><span>${t('log.empty')}</span></li>`;
+  fitList($('log'));
 
   const a = s.alerts;
   $('rules').innerHTML = [
@@ -626,17 +703,17 @@ addEventListener('resize', drawChart);
 // ---------- pages ----------
 let page = lsGet('mc.page', 'miner');
 function setPage(p) {
-  page = p === 'pool' ? 'pool' : 'miner'; lsSet('mc.page', page);
-  $('pageMiner').hidden = page !== 'miner'; $('pagePool').hidden = page !== 'pool';
+  page = p === 'pool' || p === 'log' ? p : 'miner'; lsSet('mc.page', page);
+  $('pageMiner').hidden = page !== 'miner'; $('pagePool').hidden = page !== 'pool'; $('pageLog').hidden = page !== 'log';
   document.querySelectorAll('#pages button').forEach(b => b.classList.toggle('on', b.dataset.p === page));
-  if (page === 'pool') { loadPool(); loadPoolHistory(); } else drawChart();
+  if (page === 'pool') { loadPool(); loadPoolHistory(); } else if (page === 'log') loadLog(); else { if (state) render(); drawChart(); }
 }
 document.querySelectorAll('#pages button').forEach(b => b.onclick = () => setPage(b.dataset.p));
-// no ckpool found: hide the page switch completely and stay on the miner page
+// no ckpool found: hide the POOL button and stay away from the pool page
 var poolAvail = { available: true, dir: '' };   // var: applyLang() may run before this line
 function applyPoolAvail(pa) {
   poolAvail = pa || { available: true, dir: '' };
-  $('pages').hidden = !poolAvail.available;
+  document.querySelector('#pages [data-p="pool"]').hidden = !poolAvail.available;
   if (!poolAvail.available && page === 'pool') setPage('miner');
   renderPoolHint();
 }
@@ -746,6 +823,7 @@ function renderPool() {
   $('plog').innerHTML = pev.length
     ? pev.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span><span>${esc(evText(e))}</span></li>`).join('')
     : `<li><span class="t">-</span><span>${t('log.empty')}</span></li>`;
+  fitList($('plog'));
 
   $('plegend').innerHTML = `<span><i style="background:var(--g)"></i>Pool</span>` +
     wl.map((w, i) => `<span><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(w.short)}</span>`).join('');
@@ -813,6 +891,7 @@ async function loadState() {
     if (!I18N.normalise(lsGet('mc.lang', '')) && I18N.normalise(s.lang) && s.lang !== lang) { lang = s.lang; applyLang(); }
     state = s; render();
     if (page === 'pool' && poolAvail.available) loadPool();
+    if (page === 'log' && changed) loadLog();   // first state: miner names for the filter
     if (changed) { clearInterval(stateTimer); stateTimer = setInterval(loadState, s.pollSeconds * 1000); }
   } catch {
     $('online').textContent = 'SERVER OFFLINE'; $('dot').style.background = 'var(--bad)';
@@ -998,8 +1077,156 @@ const tick = () => $('clock').textContent = new Date().toLocaleTimeString(LOC())
 tick(); setInterval(tick, 1000);
 // app install support (only works over HTTPS, e.g. via "tailscale serve")
 if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
-applyLang(); setTab(); setPTab(); applyChart(); applyPChart(); setPage(page); loadState(); loadHistory();
-setInterval(() => { if (page === 'pool') loadPoolHistory(); else loadHistory(); }, 60000);
+// ---------- short event lists: only the newest entries that fit, everything else on the LOG page ----------
+function fitList(ul) {
+  if (!ul || !ul.clientHeight) return;            // hidden page: fitted again when it becomes visible
+  while (ul.children.length > 1 && ul.scrollHeight > ul.clientHeight + 1) ul.lastElementChild.remove();
+}
+function refitLists() { if (state) { if (page === 'pool') renderPool(); else if (page === 'miner') render(); } }
+window.addEventListener('resize', () => { clearTimeout(refitLists.t); refitLists.t = setTimeout(refitLists, 200); });
+// "All in LOG": open the LOG page with the matching filter
+function openLog(miner) {
+  lg.miner = miner; lg.level = 'all'; lg.from = lg.to = 0;
+  lsSet('mc.lgMiner', miner); lsSet('mc.lgLevel', 'all');
+  setPage('log'); window.scrollTo(0, 0);
+}
+
+// ---------- uptime / availability per miner ----------
+var upData = null;   // var: applyLang() runs before this line
+async function loadUptime() {
+  try { const r = await fetch('api/uptime', { cache: 'no-store', signal: AbortSignal.timeout(15000) }); if (r.ok) { upData = await r.json(); renderUptime(); } } catch {}
+}
+// duration of an outage in minutes (own name: fmtDur() above formats the block chance in days)
+function fmtMin(min) {
+  if (min < 1) return '< 1 min';
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h ${min % 60} min`;
+  return `${Math.floor(h / 24)} d ${h % 24} h`;
+}
+function fmtSec(s) { return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; }
+// boot time cell: last · average; yellow when the last start took clearly longer than usual
+function bootCell(b) {
+  if (!b) return '<span class="sub">–</span>';
+  const slow = b.n >= 3 && b.last > b.avg * 1.5 && b.last - b.avg >= 15;
+  return `<span class="${slow ? 'p-mid' : ''}">${fmtSec(b.last)}</span>${b.n > 1 ? `<span class="sub">Ø ${fmtSec(b.avg)}</span>` : ''}`;
+}
+function renderUptime() {
+  if (!upData || !$('upRows')) return;
+  const pc = v => v === null ? '<span class="sub">–</span>'
+    : `<span class="${v >= 99 ? 'p-ok' : v >= 95 ? 'p-mid' : 'p-bad'}">${v.toLocaleString(LOC(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</span>`;
+  $('upRows').innerHTML = upData.miners.map(m => `<tr>
+    <td>${esc(m.name)}${m.since ? `<span class="sub">${esc(t('up.since', { d: fmtEvt(m.since) }))}</span>` : ''}</td>
+    <td>${pc(m.d1)}</td><td>${pc(m.d7)}</td><td>${pc(m.d30)}</td>
+    <td>${m.outages}</td><td>${m.outages ? fmtMin(m.longest) : '–'}</td><td>${m.restarts}</td><td>${bootCell(m.boot)}</td></tr>`).join('');
+  $('upList').innerHTML = upData.recent.length ? upData.recent.map(e => {
+    const what = e.type === 'restart' ? t('up.restart') + (e.boot === -1 ? ' · ' + t('up.bootWait') : e.boot !== null && e.boot !== undefined ? ' · ' + t('up.hashAfter', { d: fmtSec(e.boot) }) : '')
+      : `${t(e.type === 'off' ? 'up.off' : 'up.zero')} · ${e.ongoing ? t('up.ongoing') : fmtMin(e.min)}`;
+    return `<li class="${e.type}"><span class="t">${fmtEvt(e.from)}</span><span>${esc(e.name)} · ${esc(what)}</span></li>`;
+  }).join('') : `<li><span class="t">-</span><span>${esc(t('up.none'))}</span></li>`;
+}
+
+// ---------- log page: all events of the last 30 days, filters, hour map ----------
+var lg = { miner: lsGet('mc.lgMiner', 'all'), level: lsGet('mc.lgLevel', 'all'), days: lsGet('mc.lgDays', '7'), from: 0, to: 0, events: [], total: 0, map: null, loading: false, err: false, seq: 0 };
+const LG_LEVELS = ['all', 'bad', 'warn', 'ok', 'note', 'pools', 'block', 'info'];
+function lgFillSelects() {
+  if (!$('lgMiner')) return;
+  const miners = (state && state.miners) || [];
+  const opts = [['all', t('lg.allMiners')], ...miners.map(m => [m.id, m.name]), ...(poolAvail.available ? [['pool', 'Pool']] : [])];
+  // only fall back to 'all' once the miner list is known (on the first load the state may not be there yet)
+  if (state && !opts.some(o => o[0] === lg.miner)) lg.miner = 'all';
+  if (!opts.some(o => o[0] === lg.miner)) opts.push([lg.miner, lg.miner]);
+  $('lgMiner').innerHTML = opts.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('');
+  $('lgMiner').value = lg.miner;
+  $('lgLevel').innerHTML = LG_LEVELS.map(v => `<option value="${v}">${esc(t('lg.lv.' + v))}</option>`).join('');
+  $('lgLevel').value = lg.level;
+  $('lgDays').innerHTML = [['1', '24 h'], ['7', t('up.d7')], ['30', t('up.d30')]].map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('');
+  $('lgDays').value = lg.days;
+}
+async function loadLog() {
+  lgFillSelects();
+  const q = new URLSearchParams({ miner: lg.miner, level: lg.level, days: lg.days });
+  if (lg.from) { q.set('from', lg.from); q.set('to', lg.to); q.set('days', '30'); }
+  // every request gets a number: an older answer that arrives late (slow mobile line) is ignored,
+  // and a request that hangs is given up after 15 s instead of leaving the page empty
+  const seq = ++lg.seq;
+  lg.loading = true; lg.err = false; renderLog();
+  const get = u => fetch(u, { cache: 'no-store', signal: AbortSignal.timeout(15000) }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  try {
+    const [ev, mp] = await Promise.all([
+      get('api/events?' + q),
+      lg.miner === 'pool' ? null : get('api/uptime/hours?miner=' + encodeURIComponent(lg.miner))
+    ]);
+    if (seq !== lg.seq) return;
+    lg.events = Array.isArray(ev.events) ? ev.events : []; lg.total = ev.total || 0; lg.map = mp;
+  } catch {
+    if (seq !== lg.seq) return;
+    lg.err = true;
+  }
+  lg.loading = false;
+  renderLog();
+}
+function renderLog() {
+  if (!$('lgList')) return;
+  const lvl = { block: 'blk', warn: 'wrn', bad: 'bad', ok: 'ok', info: '', note: 'lnote' };
+  const showName = lg.miner === 'all';
+  $('lgMapTitle').textContent = t('lg.map' + (lg.days === '1' ? '1' : lg.days === '7' ? '7' : '30'));
+  $('lgCount').textContent = lg.loading ? t('lg.loading') : lg.total > lg.events.length ? `(${lg.events.length} / ${lg.total})` : `(${lg.total})`;
+  if (lg.err) {
+    $('lgList').innerHTML = `<li class="bad"><span>${esc(t('lg.error'))}</span> <button class="btn ghost" onclick="loadLog()">${esc(t('lg.retry'))}</button></li>`;
+    $('lgMapBox').hidden = !lg.map;
+    if (!lg.map) return;
+  } else if (lg.loading && !lg.events.length) {
+    $('lgList').innerHTML = '';
+  } else $('lgList').innerHTML = lg.events.length ? lg.events.map(e => `<li class="${lvl[e.level] || ''}"><span class="t">${fmtEvt(e.t)}</span>${showName ? `<span class="m">${esc(e.src === 'pool' ? 'Pool' : e.miner || '-')}</span>` : ''}<span>${esc(evText(e))}</span></li>`).join('')
+    : `<li><span class="t">-</span><span>${esc(t('lg.none'))}</span></li>`;
+  const chip = $('lgHour');
+  chip.hidden = !lg.from;
+  if (lg.from) chip.textContent = `${fmtEvt(lg.from)} – ${new Date(lg.to).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' })} ✕`;
+  // hour map (not for the pool: ckpool has no per-minute availability)
+  $('lgMapBox').hidden = !lg.map;
+  if (!lg.map) return;
+  const rs = new Set(lg.map.restarts.map(x => { const d = new Date(x); d.setMinutes(0, 0, 0); return d.getTime(); }));
+  let html = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="h">${h % 3 === 0 ? h : ''}</span>`).join('');
+  // rows follow the chosen period: 24 h = today and yesterday (the last 24 h span two days), 7 or 30 days
+  const nDays = lg.days === '1' ? 2 : Number(lg.days) || 30;
+  $('lgMapTitle').textContent = t('lg.map' + (lg.days === '1' ? '1' : lg.days === '7' ? '7' : '30'));
+  lg.map.days.slice(0, nDays).forEach((day, di) => {
+    html += `<span class="d">${new Date(day).toLocaleDateString(LOC(), { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>`;
+    for (let h = 0; h < 24; h++) {
+      const s = lg.map.rows[di][h], start = day + h * 3600000;
+      const sel = lg.from === start ? ' sel' : '';
+      html += `<i class="s${s === '.' ? '' : s}${rs.has(start) ? ' rs' : ''}${sel}" data-h="${start}" title="${esc(fmtEvt(start) + ' · ' + t('lg.st.' + (s === '.' ? 'none' : s)))}"></i>`;
+    }
+  });
+  $('lgMap').innerHTML = html;
+  $('lgLegend').innerHTML = [['s1', 'lg.st.1'], ['sa', 'lg.st.a'], ['sb', 'lg.st.b'], ['sx', 'lg.st.x'], ['sp', 'lg.st.p'], ['', 'lg.st.none']]
+    .map(([c, k]) => `<span><i class="${c}" style="${c ? '' : 'background:rgba(var(--line-rgb),.25)'}"></i>${esc(t(k))}</span>`).join('')
+    + `<span><i style="background:rgba(var(--line-rgb),.25)"><b style="position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:#fff"></b></i>${esc(t('lg.st.restart'))}</span>`;
+}
+$('lgMiner').onchange = e => { lg.miner = e.target.value; lsSet('mc.lgMiner', lg.miner); loadLog(); };
+$('lgLevel').onchange = e => { lg.level = e.target.value; lsSet('mc.lgLevel', lg.level); loadLog(); };
+$('lgDays').onchange = e => { lg.days = e.target.value; lsSet('mc.lgDays', lg.days); lg.from = lg.to = 0; loadLog(); };
+// click an hour in the map: show only the events of that hour (click again or the chip to clear)
+$('lgMap').onclick = e => {
+  const h = e.target.dataset && e.target.dataset.h; if (!h) return;
+  if (lg.from === +h) lg.from = lg.to = 0; else { lg.from = +h; lg.to = +h + 3600000; }
+  loadLog();
+};
+$('lgHour').onclick = () => { lg.from = lg.to = 0; loadLog(); };
+// CSV download of the entries currently shown (opens in Excel / LibreOffice)
+$('lgCsv').onclick = () => {
+  const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+  const rows = [['time', 'miner', 'level', 'message'].map(q).join(';')]
+    .concat(lg.events.map(e => [new Date(e.t).toLocaleString(LOC()), e.src === 'pool' ? 'Pool' : e.miner || '', e.level, evText(e)].map(q).join(';')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = `miner-control-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+applyLang(); setTab(); setPTab(); applyChart(); applyPChart(); setPage(page); loadState(); loadHistory(); loadUptime();
+setInterval(() => { if (page === 'pool') loadPoolHistory(); else if (page === 'log') loadLog(); else { loadHistory(); loadUptime(); } }, 60000);
 </script>
 </body>
 </html>

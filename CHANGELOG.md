@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0 – 2026-11-10
+- Boot time after a restart: time until the miner hashes again, shown in the log ("hashing again after 48 s") and in the availability box (last and average, yellow when clearly slower than usual). Idea by BTC Ledger – thanks!
+- Event Log / Pool Event Log: no inner scrollbar any more, they show the newest entries that fit plus a link to the LOG page with the matching filter.
+- Miner pool changes in the log: fallback pool active / back on the main pool, dual-pool pool disconnected / back, pool address or mode changed (2 polls in a row needed). Fallback and lost pool are pushed as warnings. New LOG filter "Miner pool changes".
+- LOG page: the hour grid fits the phone width without a scrollbar.
+- Fix: LOG page could stay empty on slow mobile connections. Requests now time out after 15 s with a "Try again" button, show "loading …", ignore late answers and keep the saved miner filter.
+- Fix: block chance on the POOL page was shown as an unformatted number of minutes (name clash with a new helper function in 1.5.0).
+
 ## 1.5.0 – 2026-11-09
 - Availability per miner: uptime % for 24 h / 7 / 30 days, outages (offline / not hashing), longest outage, restarts, list of recent outages and restarts. Restarts are logged, not pushed. New file `app/uptime.js`. Idea by Rax Mining – thanks!
 - New LOG page: all events of the last 30 days, filter by miner / kind / period, 30-day hour grid (click an hour to see its entries), CSV download. Event log kept for 30 days.

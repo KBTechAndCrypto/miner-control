@@ -300,3 +300,64 @@ Notes:
 ### BTC or BCH
 
 The dashboard detects the coin automatically from the node (Bitcoin Cash Node, ABC, Flowee, bchd → **BCH**; Bitcoin Core, Knots → **BTC**). Price, the label at “Reward now” and the address display depend on it (CashAddr only on BCH). If the node is unreachable or unknown, the variable `MC_COIN` applies (e.g. `MC_COIN=BTC`), otherwise BCH.
+
+## 17. Miner availability (uptime)
+
+At the bottom of the MINER page the **Availability** box shows per miner:
+
+- **24 h / 7 days / 30 days:** share of time the miner was hashing (green from 99 %, yellow from 95 %, otherwise red).
+- **Outages**, the **longest** outage and **restarts** of the last 30 days.
+- **Recent outages and restarts** with time – this shows patterns (always at the same time? all miners at once → rather power, router or Wi-Fi).
+
+How it is counted (every minute gets one state):
+
+| State | Meaning | counts as outage |
+|---|---|---|
+| hashing | answers and delivers hashrate | no |
+| **offline** | no answer during the whole minute | yes |
+| **not hashing** | answers, but delivers 0 or under 5 % of its target hashrate | yes |
+| restart | up to 2 min after boot without hashrate, and the offline minutes right before the boot | no (left out) |
+| paused | mining paused in AxeOS | no (left out) |
+| unknown | the dashboard itself was not running | no (left out) |
+
+**After a restart a miner gets 2 minutes** to start hashing. If it still does not hash after that, it counts as a “not hashing” outage from then on.
+
+**Restarts** are detected from the miner's running time (it jumps back), even if the miner was hardly away or the dashboard was off at the time. They are also written to the event log, but **not** sent as push (a restart may be intentional).
+
+Counting starts with version 1.5.0; earlier times are “unknown”. Data: `data/uptime.json`, 30 days.
+
+## 18. LOG page – all entries of the last 30 days
+
+At the top under **LOG** (next to MINER and POOL) you see all entries of the last 30 days.
+
+- **Filters:** miner (all, one miner or pool), kind (outages, warnings, back online, restarts, blocks found, best difficulty) and period (24 h, 7 days, 30 days). The browser remembers your choice.
+- **Overview:** a grid matching the period – 24 h (today and yesterday), 7 or 30 days (rows) by 24 hours (columns). Green = no outages, yellow = partly, red = mostly down, white dot = restart. With “All miners” the worst miner of each hour counts. This shows at a glance whether outages always happen at the same time.
+- **Click an hour:** shows only the entries of that hour. Click again or the ✕ on the filter to see everything.
+- **⬇ CSV:** downloads the entries shown as a table (opens in Excel or LibreOffice).
+
+The event log is now kept for 30 days (at most 5000 entries) instead of only the last 300.
+
+### Boot time after a restart
+
+After every restart the dashboard measures **how long it takes until the miner hashes again** (accurate to about one poll interval). In the Availability box the **Boot** column shows the last value and below it the average of the last 30 days. If the last start was clearly slower than usual (at least 1.5 times as long and 15 s more, from 3 measurements on), it turns yellow. That way a miner that takes longer and longer to come back stands out.
+
+The log then shows e.g. “Restart – hashing again after 48 s”. If a miner is still not hashing after 2 minutes: “Restart – no hashrate after 2 min”. If the restart was noticed late (miner unreachable for a while or dashboard off), the boot time cannot be measured; then it only says “Restart detected”.
+
+### Event log on the MINER and POOL pages
+
+The **Event Log** and **Pool Event Log** boxes only show as many of the newest entries as fit next to the box on the right, without their own scrollbar. All entries: the link **“All entries in LOG ›”** below – it opens the LOG page with the matching filter (on the pool page “Pool”).
+
+### Miner pool changes in the log
+
+The dashboard remembers which pool each miner is connected to and writes changes to the log:
+
+| Entry | When | Push |
+|---|---|---|
+| connected to … | once, when a miner is polled for the first time (also after the update to 1.6.0) | no |
+| **fallback pool active: … – main pool unreachable?** | the miner switched to its fallback pool | yes, under “warnings” |
+| back on the main pool: … | back from the fallback | yes, under “back online” |
+| **pool disconnected: …** / pool connected again: … | dual pool: one of the two pools loses the connection or is back | yes (“warnings” / “back online”) |
+| pool changed: old → new | pool address changed in AxeOS | no |
+| pool mode: Dual-Pool / 1 Pool | switched between one and two pools | no |
+
+A change has to be seen on **two polls in a row** – a short hiccup creates no entry. The LOG page has the kind **“Miner pool changes”** for this. If the pool changes while the dashboard is off, it is added at the next start.
