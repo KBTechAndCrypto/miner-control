@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1 – 2026-11-11
+- POOL page: two new tiles "Pool Work" (accepted shares as sum of difficulty) and "Rejected" (share of rejected work in %, yellow from 2 %); pool tiles now 4 per row.
+- POOL page, worker table: shares are shown short with 2 decimals (K / M / G / T, exact number on hover); the best column is now "Best Diff" and shows only the best share ("ever" removed – it is the same until the pool finds a block).
+
 ## 1.7.0 – 2026-11-11
 - Support export on the LOG page: one English text report for the selected miner and period (firmware, board revision, current values, pools, availability, boot times, outages, hour map, log entries) with a preview that removes IP and pool addresses; wallet addresses are always removed. Copy or save as .txt. Idea from r/BitAxe – thanks!
 

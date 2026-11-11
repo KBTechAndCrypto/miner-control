@@ -30,7 +30,7 @@ const FETCH_TIMEOUT_MS = 5000;
 
 const PROFILE_NAMES = { 0: '🍃 ECO', 1: '⚖️ Normal', 2: '⚡ Power', 3: '⚙️ Custom', 4: '🌙 Silent' };
 
-const APP_VERSION = '1.7.0';   // shown in the support export
+const APP_VERSION = '1.7.1';   // shown in the support export
 const DEFAULT_LANG = i18n.normalise(process.env.MC_LANG) || 'de';
 
 const DEFAULT_CONFIG = {

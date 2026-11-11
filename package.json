@@ -1,6 +1,6 @@
 {
   "name": "miner-control",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Read-only dashboard for AxeOS miners (Bitaxe, LuckyAxe, ...) and a local ckpool. No dependencies.",
   "private": true,
   "scripts": { "start": "node app/server.js" },

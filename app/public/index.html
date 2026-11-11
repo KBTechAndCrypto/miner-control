@@ -177,9 +177,10 @@
   .x:hover{border-color:var(--bad);color:var(--bad)}
   .demo{position:fixed;right:12px;bottom:10px;z-index:3;font-size:10px;color:var(--g-mute)}
 
-  @media (max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.miners{grid-template-columns:1fr}}
+  .stats.s8{grid-template-columns:repeat(4,1fr)}
+  @media (max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.stats.s8{grid-template-columns:repeat(4,1fr)}.miners{grid-template-columns:1fr}}
   @media (max-width:760px){.bottom,.upgrid{grid-template-columns:1fr}.grid4{grid-template-columns:repeat(2,1fr)}}
-  @media (max-width:520px){.stats{grid-template-columns:1fr 1fr}.stat .val{font-size:21px}.m-hash .big{font-size:28px}
+  @media (max-width:520px){.stats,.stats.s8{grid-template-columns:1fr 1fr}.stat .val{font-size:21px}.m-hash .big{font-size:28px}
     .row{grid-template-columns:1fr}.brand h1{font-size:18px}}
 
   .miner.warnbox{border-color:var(--warn)}
@@ -252,6 +253,7 @@
   .ppanel{padding:14px 16px;margin-bottom:16px}
   .ppanel h2{margin:0 0 10px;font-size:14px}
   .stat .val.bad{color:var(--bad);text-shadow:0 0 8px rgba(255,59,78,.5)}
+  .stat .val.warn{color:var(--warn);text-shadow:0 0 8px rgba(255,176,32,.5)}
   @media (max-width:760px){.gauge,.gscale{grid-template-columns:96px 1fr 70px}}
   @media (max-width:520px){.row2{grid-template-columns:1fr}.pages button{padding:6px 10px;font-size:12px}}
 </style>
@@ -324,13 +326,15 @@
   <div id="pagePool" hidden>
   <div id="poolOff" class="panel empty" hidden></div>
   <div id="poolOn">
-  <section class="stats">
+  <section class="stats s8">
     <div class="panel stat"><div class="label">Pool Hashrate</div><div class="val glow" id="pHash">-</div><div class="hint" id="pHashHint">-</div></div>
     <div class="panel stat"><div class="label">Worker</div><div class="val glow" id="pWork">-</div><div class="hint" id="pWorkHint">-</div></div>
     <div class="panel stat"><div class="label">Best Share</div><div class="val glow" id="pBest">-</div><div class="hint" id="pBestHint">-</div></div>
     <div class="panel stat block"><div class="label">Blocks Found</div><div class="val" id="pBlk">-</div><div class="hint" id="pBlkHint">-</div></div>
     <div class="panel stat"><div class="label">Network Difficulty</div><div class="val glow" id="pDiff">-</div><div class="hint" id="pDiffHint">-</div></div>
     <div class="panel stat"><div class="label">Block-Chance</div><div class="val glow" id="pChance">-</div><div class="hint" id="pChanceHint">-</div></div>
+    <div class="panel stat"><div class="label">Pool Work</div><div class="val glow" id="pAcc">-</div><div class="hint" id="pAccHint">-</div></div>
+    <div class="panel stat"><div class="label">Rejected</div><div class="val glow" id="pRej">-</div><div class="hint" id="pRejHint">-</div></div>
   </section>
 
   <section class="panel chart" id="pchartbox">
@@ -352,7 +356,7 @@
 
   <section class="panel ppanel">
     <h2 class="glow">⛏ Worker <span id="wCount" style="font-size:12px;color:var(--g-dim);font-weight:normal"></span></h2>
-    <div class="tablewrap"><table class="ptable"><thead><tr><th>Worker</th><th>1 min</th><th>1 h</th><th>24 h</th><th>Shares</th><th>Best · ever</th><th data-i="w.lastShare"></th></tr></thead><tbody id="wBody"></tbody></table></div>
+    <div class="tablewrap"><table class="ptable"><thead><tr><th>Worker</th><th>1 min</th><th>1 h</th><th>24 h</th><th>Shares</th><th>Best Diff</th><th data-i="w.lastShare"></th></tr></thead><tbody id="wBody"></tbody></table></div>
   </section>
 
   <section class="bottom">
@@ -794,6 +798,15 @@ function renderPool() {
   $('pWorkHint').textContent = t('pool.workersHint');
   $('pBest').innerHTML = fmtDiff(p.bestever || 0);
   $('pBestHint').textContent = t('pool.thisRound', { v: plain(fmtDiff(p.bestSinceBlock || 0)) });
+  // pool work: ckpool counts accepted / rejected as sum of share difficulty
+  const pAcc = p.accepted || 0, pRej = p.rejected || 0, pRejPct = pAcc + pRej ? pRej / (pAcc + pRej) * 100 : 0;
+  $('pAcc').innerHTML = fmtDiff(pAcc);
+  $('pAcc').title = Number(pAcc).toLocaleString(LOC());
+  $('pAccHint').textContent = t('pool.workHint');
+  $('pRej').innerHTML = `${pRejPct.toFixed(2)} <small>%</small>`;
+  $('pRej').classList.toggle('warn', pRejPct >= 2);
+  $('pRej').title = Number(pRej).toLocaleString(LOC());
+  $('pRejHint').textContent = t('pool.rejHint', { v: plain(fmtDiff(pRej)) });
   const blocks = p.blocks || [];
   $('pBlk').innerHTML = `${blocks.length} <small>⛏</small>`;
   $('pBlkHint').textContent = blocks.length ? t('pool.lastBlock', { d: fmtDate(blocks[blocks.length - 1].t), h: blocks[blocks.length - 1].height }) : t('pool.noBlocksYet');
@@ -815,8 +828,8 @@ function renderPool() {
   $('wBody').innerHTML = wl.length ? wl.map((w, i) => `<tr class="${w.online ? '' : 'off'}">
       <td><span style="color:${COLORS[i % COLORS.length]}">■</span> <span class="wn">${esc(w.short)}</span> <span class="badge" style="${w.online ? '' : 'border-color:var(--bad);color:var(--bad)'}">${w.online ? 'ONLINE' : 'OFFLINE'}</span><br><span class="us">${esc(w.user.length > 24 ? w.user.slice(0, 10) + '…' + w.user.slice(-8) : w.user)}</span></td>
       <td>${plain(fmtHs(w.h1m))}</td><td>${plain(fmtHs(w.h1h))}</td><td>${plain(fmtHs(w.h1d))}</td>
-      <td>${Number(w.shares).toLocaleString(LOC())}</td>
-      <td>${plain(fmtDiff(w.best))} · ${plain(fmtDiff(w.bestever))}</td>
+      <td title="${esc(Number(w.shares).toLocaleString(LOC()))}">${plain(fmtDiff(w.shares))}</td>
+      <td>${plain(fmtDiff(w.best))}</td>
       <td title="${esc(t('w.lastShareTip'))}">${w.shareAge !== null && w.shareAge < 65000 && w.online ? '&lt; 1 min' : ago(w.lastshare)}</td></tr>`).join('')
     : `<tr><td colspan="7" style="text-align:left;color:var(--g-dim)">${t('w.none')}</td></tr>`;
 
