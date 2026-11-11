@@ -1,4 +1,5 @@
 # >_ Miner Control
+### The free dashboard for home miners
 
 **A read-only dashboard for AxeOS miners (Bitaxe, NerdQaxe, LuckyAxe, …) and your own ckpool / BTC or BCH node.**
 Matrix-green look, German and English, installable as a phone app with push notifications, and no external Node.js libraries at all.
