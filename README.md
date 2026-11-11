@@ -16,6 +16,7 @@ Matrix-green look, German and English, installable as a phone app with push noti
 - **Alerts** for temperature, low hashrate, offline, low input voltage, overheat and stalled fans, with adjustable limits and an event log.
 - **Availability per miner**: uptime % for 24 h / 7 / 30 days, outages (offline or not hashing), longest outage and restarts – with a 2-minute grace after a restart.
 - **LOG page**: all events of the last 30 days, filter by miner, kind and period, an hour-by-hour overview grid (click an hour to see what happened) and CSV download.
+- **Support export**: one English text report for a support ticket – firmware, board, availability, restarts, hour map and log of the selected period – with IP and pool addresses removed on request.
 - **Push notifications** to your phone: block found, new best difficulty, miner offline / back online, warnings, ckpool or node down.
 - **POOL page** for your own **ckpool** (solo): pool hashrate, workers, best share vs. block, block chance, current reward, node status. The page only appears when a ckpool is found.
 - **Network scan** finds AxeOS miners in your local network.
@@ -122,8 +123,10 @@ Windows autostart, the systemd service on a real system, the Docker Tailscale pr
 
 Miner Control is free and stays free. If it is useful to you and you want to say thanks, a small tip is welcome – no obligation:
 
-- **BTC:** `bc1q34jw68wwt20qkn09swl23wa6amhma6jekuxk48`
-- **BCH:** `bitcoincash:qz9x4xc0089v2g9f2l78n2kgftumdjqtmyeuyms2wm`
+| BTC | BCH |
+|:---:|:---:|
+| <img src="docs/images/donate-btc.png" width="160" alt="BTC donation QR code"> | <img src="docs/images/donate-bch.png" width="160" alt="BCH donation QR code"> |
+| `bc1q34jw68wwt20qkn09swl23wa6amhma6jekuxk48` | `bitcoincash:qz9x4xc0089v2g9f2l78n2kgftumdjqtmyeuyms2wm` |
 
 ⭐ A star on GitHub or feedback in the Issues helps too!
 
