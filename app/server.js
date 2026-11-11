@@ -30,6 +30,7 @@ const FETCH_TIMEOUT_MS = 5000;
 
 const PROFILE_NAMES = { 0: '🍃 ECO', 1: '⚖️ Normal', 2: '⚡ Power', 3: '⚙️ Custom', 4: '🌙 Silent' };
 
+const APP_VERSION = '1.7.0';   // shown in the support export
 const DEFAULT_LANG = i18n.normalise(process.env.MC_LANG) || 'de';
 
 const DEFAULT_CONFIG = {
@@ -171,6 +172,8 @@ function normalise(j) {
   return {
     hostname: j.hostname || '',
     version: j.version || '',
+    axeos: j.axeOSVersion || '', idf: j.idfVersion || '',
+    board: j.boardVersion != null ? String(j.boardVersion) : '', model: j.deviceModel || '',
     asicModel: j.ASICModel || '',
     asicCount: num(j.asicCount) || temps.length || null,
     hash: num(j.hashRate),                       // GH/s
@@ -377,6 +380,43 @@ function eventsFor(q) {
   return { total: list.length, events: list.slice(0, 3000) };
 }
 
+// Support export: everything a manufacturer's support needs for one miner (or all) and a time window,
+// in one answer. The browser turns it into a text file and removes IPs / pool addresses on request.
+// Pool user names (they usually contain the wallet address) are never included.
+function supportFor(q) {
+  const ev = eventsFor(q);
+  const miner = q.get('miner') || 'all';
+  const days = Math.min(EVENT_DAYS, Math.max(1, Number(q.get('days')) || 7));
+  const from = Math.max(Number(q.get('from')) || 0, Date.now() - days * 86400000), to = Number(q.get('to')) || Date.now();
+  const sel = config.miners.filter(m => miner === 'all' || m.id === miner);
+  const up = uptime.report(sel, Date.now(), 1000);
+  const miners = sel.map(m => {
+    const st = live[m.id] || {}, d = st.data || {};
+    const u = up.miners.find(x => x.id === m.id) || {};
+    return {
+      id: m.id, name: m.name, ip: m.ip, online: !!st.online, lastSeen: st.lastSeen || null, lastError: st.lastError || '',
+      info: st.data ? {
+        hostname: d.hostname, version: d.version, axeos: d.axeos, idf: d.idf, board: d.board, model: d.model,
+        asicModel: d.asicModel, asicCount: d.asicCount, freq: d.freq, vcore: d.vcore, expected: d.expected, hash: d.hash,
+        power: d.power, temps: d.temps, vrTemp: d.vrTemp, vin: d.vin, nominal: d.nominal, uptime: d.uptime, errorPct: d.errorPct,
+        fans: (d.fans || []).map(f => ({ name: f.name, pct: f.pct, rpm: f.rpm, mode: f.mode })),
+        pools: (d.pools || []).map(p => ({ host: p.host, fallback: !!p.fallback, connected: p.connected, share: p.share, accepted: p.accepted, rejected: p.rejected })),
+        rejectedReasons: d.rejectedReasons || []
+      } : null,
+      uptime: { d1: u.d1, d7: u.d7, d30: u.d30, outages: u.outages, longest: u.longest, restarts: u.restarts, boot: u.boot || null, since: u.since },
+      outages: up.recent.filter(x => x.id === m.id && x.to >= from && x.from <= to),
+      grid: uptime.hours(config.miners, m.id)
+    };
+  });
+  return {
+    app: APP_VERSION, generated: Date.now(), from, to, days, miner,
+    serverTz: Intl.DateTimeFormat().resolvedOptions().timeZone, node: process.version,
+    limits: config.alerts || null, pollSeconds: config.pollSeconds,
+    pool: miner === 'all' || miner === 'pool' ? { available: pool.info().available } : null,
+    miners: miner === 'pool' ? [] : miners, events: ev.events, total: ev.total
+  };
+}
+
 // ---------- API ----------
 const RANGES = { '1h': [3600e3, 60e3], '6h': [6 * 3600e3, 120e3], '24h': [86400e3, 300e3], '7d': [7 * 86400e3, 1800e3], '30d': [30 * 86400e3, 7200e3] };
 
@@ -572,6 +612,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/summary') return send(res, 200, 'application/json', JSON.stringify(summaryJson()));
   if (req.method === 'GET' && url.pathname === '/api/state') return send(res, 200, 'application/json', JSON.stringify(stateJson()));
   if (req.method === 'GET' && url.pathname === '/api/events') return send(res, 200, 'application/json', JSON.stringify(eventsFor(url.searchParams)));
+  if (req.method === 'GET' && url.pathname === '/api/support') return send(res, 200, 'application/json', JSON.stringify(supportFor(url.searchParams)));
   if (req.method === 'GET' && url.pathname === '/api/uptime/hours') return send(res, 200, 'application/json', JSON.stringify(uptime.hours(config.miners, url.searchParams.get('miner') || 'all')));
   if (req.method === 'GET' && url.pathname === '/api/uptime') return send(res, 200, 'application/json', JSON.stringify(uptime.report(config.miners)));
   if (req.method === 'GET' && url.pathname === '/api/history') return send(res, 200, 'application/json', JSON.stringify(historyFor(url.searchParams.get('range'))));

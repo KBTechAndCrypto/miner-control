@@ -165,6 +165,9 @@
   dialog{background:var(--dlg);color:var(--txt);border:1px solid var(--g);font-family:var(--font);
     width:min(560px,calc(100vw - 32px));padding:0;box-shadow:0 0 40px rgba(var(--g-rgb),.25)}
   dialog::backdrop{background:rgba(0,0,0,.7)}
+  dialog.supdlg{width:min(920px,calc(100vw - 32px))}
+  .supopts{display:flex;flex-wrap:wrap;gap:8px 18px}
+  .suppre{margin:0;background:#000;border:1px solid var(--line);color:var(--txt);font-size:11px;line-height:1.35;padding:10px;max-height:46vh;overflow:auto;white-space:pre}
   .dlg-h{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
   .dlg-b{padding:14px 16px;display:grid;gap:12px;font-size:12px}
   .row{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;align-items:center}
@@ -374,6 +377,7 @@
       <label><span data-i="lg.kind"></span><select id="lgLevel"></select></label>
       <label><span data-i="lg.range"></span><select id="lgDays"></select></label>
       <button class="btn ghost" id="lgCsv" data-i="lg.csv"></button>
+      <button class="btn ghost" id="lgSup" data-i="sup.btn" data-it="sup.hint"></button>
     </div>
   </section>
   <section class="panel ppanel" id="lgMapBox">
@@ -387,6 +391,21 @@
   </section>
   </div>
 </div>
+
+<dialog id="sup" class="supdlg">
+  <div class="dlg-h"><span class="glow" data-i="sup.title"></span><button class="x" onclick="sup.close()">✕</button></div>
+  <div class="dlg-b">
+    <div class="note" style="margin:0" data-i="sup.intro"></div>
+    <div class="supopts">
+      <label class="tog"><input type="checkbox" id="supIp" checked> <span data-i="sup.optIp"></span></label>
+      <label class="tog"><input type="checkbox" id="supPool" checked> <span data-i="sup.optPool"></span></label>
+      <label class="tog"><input type="checkbox" id="supName"> <span data-i="sup.optName"></span></label>
+    </div>
+    <pre id="supPre" class="suppre"></pre>
+    <div class="note" style="margin:0" data-i="sup.wallet"></div>
+  </div>
+  <div class="dlg-f"><span class="hint" id="supMsg"></span><span style="display:flex;gap:8px"><button class="btn ghost" id="supCopy" data-i="sup.copy"></button><button class="btn" id="supDl" data-i="sup.dl"></button></span></div>
+</dialog>
 
 <dialog id="cfg">
   <div class="dlg-h"><span class="glow" data-i="cfg.title"></span><button class="x" onclick="cfg.close()">✕</button></div>
@@ -1223,6 +1242,110 @@ $('lgCsv').onclick = () => {
   a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
   a.download = `miner-control-log-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
+};
+
+// ---------- support export: one text file for a manufacturer's support (always in English) ----------
+var supData = null;
+const supT = (k, a) => I18N.tr('en', k, a);
+$('lgSup').onclick = async () => {
+  const q = new URLSearchParams({ miner: lg.miner, level: 'all', days: lg.days });
+  if (lg.from) { q.set('from', lg.from); q.set('to', lg.to); }
+  $('supMsg').textContent = t('lg.loading'); $('supPre').textContent = ''; sup.showModal();
+  try {
+    const r = await fetch('api/support?' + q, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+    supData = await r.json(); $('supMsg').textContent = ''; renderSupport();
+  } catch { $('supMsg').textContent = t('lg.error'); }
+};
+['supIp', 'supPool', 'supName'].forEach(id => $(id).onchange = renderSupport);
+function supText() {
+  const d = supData, o = { ip: $('supIp').checked, pool: $('supPool').checked, name: $('supName').checked };
+  const pad = (s, n) => String(s).padEnd(n);
+  const dt = ts => { const x = new Date(ts); const p = n => String(n).padStart(2, '0');
+    return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}`; };
+  const off = -new Date().getTimezoneOffset(), tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const utc = `UTC${off >= 0 ? '+' : '-'}${String(Math.floor(Math.abs(off) / 60)).padStart(2, '0')}:${String(Math.abs(off) % 60).padStart(2, '0')}`;
+  const n1 = (v, d0 = 1) => v === null || v === undefined || v === '' ? '-' : Number(v).toFixed(d0);
+  const th = gh => gh == null ? '-' : gh >= 1000 ? (gh / 1000).toFixed(2) + ' TH/s' : gh.toFixed(0) + ' GH/s';
+  const upt = s => s == null ? '-' : `${Math.floor(s / 86400)} d ${String(Math.floor(s % 86400 / 3600)).padStart(2, '0')} h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')} m`;
+  // names and pool addresses get stable placeholders; the same thing is replaced everywhere, also inside event texts
+  const names = new Map(), pools = new Map();
+  d.miners.forEach((m, i) => names.set(m.name, `Miner ${i + 1}`));
+  const addPool = h => { h = String(h || '').trim(); if (h && h !== '-' && !/^Pool( \d)?$/.test(h) && !pools.has(h)) pools.set(h, `[pool ${String.fromCharCode(65 + pools.size)}]`); };
+  d.miners.forEach(m => ((m.info && m.info.pools) || []).forEach(p => addPool(p.host)));
+  d.events.forEach(e => { if (e.a) { String(e.a.pool || '').split(' + ').forEach(addPool); String(e.a.old || '').split(' + ').forEach(addPool); } });
+  const W = s => {
+    s = String(s);
+    if (o.pool) [...pools.keys()].sort((a, b) => b.length - a.length).forEach(h => { s = s.split(h).join(pools.get(h)); });
+    if (o.name) [...names.keys()].sort((a, b) => b.length - a.length).forEach(n => { if (n) s = s.split(n).join(names.get(n)); });
+    if (o.ip) s = s.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP]');
+    // wallet addresses are always removed (BTC legacy/segwit, BCH cashaddr)
+    s = s.replace(/\b(?:bitcoincash:)?[qp][02-9ac-hj-np-z]{41}\b/g, '[address]').replace(/\bbc1[02-9ac-hj-np-z]{25,62}\b/g, '[address]').replace(/\b[13][1-9A-HJ-NP-Za-km-z]{25,34}\b/g, '[address]');
+    return s;
+  };
+  const line = '='.repeat(78), sub = '-'.repeat(78), L = [];
+  const sel = d.miner === 'all' ? 'All miners' : d.miner === 'pool' ? 'Pool' : (d.miners[0] || {}).name || d.miner;
+  L.push(line, ' MINER CONTROL - SUPPORT REPORT', line);
+  L.push(`Created     ${dt(d.generated)}  (${tz}, ${utc})`);
+  L.push(`Period      ${dt(d.from)} - ${dt(d.to)}`);
+  L.push(`Selection   ${sel}`);
+  L.push(`Dashboard   Miner Control ${d.app} · Node ${d.node} · poll ${d.pollSeconds} s · server time zone ${d.serverTz}`);
+  L.push(`Removed     ${[o.ip && 'IP addresses', o.pool && 'pool addresses', o.name && 'miner names', 'wallet addresses'].filter(Boolean).join(', ')}`);
+  const CH = { '1': '#', a: '+', b: '!', x: 'X', p: 'p', '.': '.' };
+  d.miners.forEach((m, i) => {
+    const f = m.info, u = m.uptime || {};
+    L.push('', sub, ` MINER ${i + 1}: ${m.name}`, sub);
+    L.push(`Status      ${m.online ? 'online' : 'OFFLINE'}${m.lastSeen ? ` (last answer ${dt(m.lastSeen)})` : ''}${m.lastError ? ` · last error: ${supT('err.' + m.lastError) !== 'err.' + m.lastError ? supT('err.' + m.lastError) : m.lastError}` : ''}`);
+    L.push(`Address     ${m.ip}`);
+    if (f) {
+      L.push(`Device      ${[f.model, f.board && 'board ' + f.board, f.asicModel && `${f.asicModel} x${f.asicCount || '?'}`, f.hostname && 'hostname ' + f.hostname].filter(Boolean).join(' · ') || '-'}`);
+      L.push(`Firmware    ${[f.version, f.axeos && f.axeos !== f.version && 'AxeOS ' + f.axeos, f.idf && 'ESP-IDF ' + f.idf].filter(Boolean).join(' · ') || '-'}`);
+      L.push(`Now         ${th(f.hash)} (target ${th(f.expected)}) · ${n1(f.power)} W · ASIC ${(f.temps || []).map(x => n1(x)).join('/') || '-'} °C · VR ${n1(f.vrTemp)} °C`);
+      L.push(`            ${n1(f.freq, 0)} MHz · ${n1(f.vcore, 0)} mV · input ${n1(f.vin, 2)} V / ${n1(f.nominal, 0)} V · error ${n1(f.errorPct, 2)} % · uptime ${upt(f.uptime)}`);
+      (f.fans || []).forEach(x => L.push(`Fan         ${x.name}: ${n1(x.pct, 0)} % · ${n1(x.rpm, 0)} rpm · ${x.mode}`));
+      (f.pools || []).forEach((p, k) => L.push(`Pool ${k + 1}      ${p.host}${p.fallback ? ' (FALLBACK)' : ''} · ${p.connected ? 'connected' : 'DISCONNECTED'} · ${p.share ?? '-'} % · accepted ${p.accepted} / rejected ${p.rejected}`));
+      (f.rejectedReasons || []).forEach(r => L.push(`Rejected    ${r.message}: ${r.count}`));
+    } else L.push('Device      no data yet');
+    L.push(`Uptime      24 h ${n1(u.d1)} % · 7 d ${n1(u.d7)} % · 30 d ${n1(u.d30)} %${u.since ? ` (recorded since ${dt(u.since)})` : ''}`);
+    L.push(`            outages ${u.outages ?? 0}${u.outages ? ` (longest ${u.longest} min)` : ''} · restarts ${u.restarts ?? 0}${u.boot ? ` · boot time last ${u.boot.last} s / avg ${u.boot.avg} s / max ${u.boot.max} s` : ''}`);
+    if (m.outages.length) {
+      L.push('', 'Outages and restarts in this period:');
+      m.outages.forEach(x => L.push(`  ${dt(x.from)}  ${pad(x.type === 'restart' ? 'restart' : x.type === 'off' ? 'offline' : 'not hashing', 12)} ${x.type === 'restart' ? (x.boot > 0 ? `hashing after ${x.boot} s` : x.boot === -1 ? 'waiting for hashrate' : '') : x.ongoing ? 'ongoing' : x.min + ' min'}`));
+    }
+    // hour map: one character per hour, same rows as the LOG page
+    const g = m.grid, nDays = d.days <= 1 ? 2 : Math.min(d.days, 30);
+    if (g && g.rows.some(r => r !== '.'.repeat(24))) {
+      const rs = new Set(g.restarts.map(x => { const y = new Date(x); y.setMinutes(0, 0, 0); return y.getTime(); }));
+      L.push('', 'Hour map (local time of the dashboard, one character per hour):');
+      L.push('               0     3     6     9     12    15    18    21');
+      g.days.slice(0, nDays).forEach((day, di) => {
+        const cells = [...g.rows[di]].map((c, h) => rs.has(day + h * 3600000) ? 'R' : CH[c]);
+        const lab = new Date(day).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(',', '');
+        L.push(`  ${pad(lab, 12)} ${cells.map((c, h) => c + (h % 3 === 2 ? ' ' : '')).join('')}`);
+      });
+      L.push('  # no outage  + up to 10 % down  ! up to 50 % down  X mostly down  p paused  . no data  R restart');
+    }
+  });
+  L.push('', sub, ` EVENTS (${d.events.length}${d.total > d.events.length ? ' of ' + d.total : ''})`, sub);
+  const LV = { bad: 'ERROR', warn: 'WARN', ok: 'OK', info: 'INFO', note: 'NOTE', block: 'BLOCK' };
+  if (!d.events.length) L.push('  none');
+  d.events.forEach(e => L.push(`${dt(e.t)}  ${pad(e.src === 'pool' ? 'Pool' : e.miner || '-', 18)} ${pad(LV[e.level] || e.level, 5)}  ${e.k ? supT(e.k, e.a) : String(e.text || '')}`));
+  const a = d.limits || {};
+  L.push('', line, `Alert thresholds: ASIC > ${a.asicTemp} °C · VR > ${a.vrTemp} °C · hashrate < ${a.hashPct} % · offline after ${a.offlineMin} min · input < ${a.minVinPct} %`);
+  L.push('Created with Miner Control (read-only dashboard) - https://github.com/KBTechAndCrypto/miner-control', line);
+  return W(L.join('\n'));
+}
+function renderSupport() { if (supData) $('supPre').textContent = supText(); }
+$('supDl').onclick = () => {
+  if (!supData) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([supText()], { type: 'text/plain;charset=utf-8' }));
+  a.download = `miner-control-support-${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+$('supCopy').onclick = async () => {
+  if (!supData) return;
+  try { await navigator.clipboard.writeText(supText()); $('supMsg').textContent = t('sup.copied'); }
+  catch { const r = document.createRange(); r.selectNodeContents($('supPre')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('supMsg').textContent = t('sup.selected'); }
 };
 
 applyLang(); setTab(); setPTab(); applyChart(); applyPChart(); setPage(page); loadState(); loadHistory(); loadUptime();

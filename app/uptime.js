@@ -125,7 +125,7 @@ function stateAt(r, minute) {
 }
 
 // availability and outages for the API
-function report(miners, now = Date.now()) {
+function report(miners, now = Date.now(), limit = 20) {
   const nowMin = minuteOf(now) - 1;                      // last finished minute
   for (const id of Object.keys(cur)) if (cur[id].minute <= nowMin) close(id);   // finished but not yet closed by tick()
   const list = [];
@@ -172,7 +172,7 @@ function report(miners, now = Date.now()) {
     };
   });
   list.sort((a, b) => b.from - a.from);
-  return { miners: out, recent: list.slice(0, 20) };
+  return { miners: out, recent: list.slice(0, limit) };
 }
 
 // Hour grid for the log viewer: one row per local day (newest first), 24 characters per row.

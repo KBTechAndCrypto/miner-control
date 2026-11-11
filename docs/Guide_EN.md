@@ -361,3 +361,11 @@ The dashboard remembers which pool each miner is connected to and writes changes
 | pool mode: Dual-Pool / 1 Pool | switched between one and two pools | no |
 
 A change has to be seen on **two polls in a row** – a short hiccup creates no entry. The LOG page has the kind **“Miner pool changes”** for this. If the pool changes while the dashboard is off, it is added at the next start.
+
+## 19. Support export (report for a manufacturer's support)
+
+On the **LOG** page next to “CSV”: **🧾 Support export**. It takes the currently selected **miner and period** (also a clicked hour) and creates a report for a support ticket – **always in English**, so any support team can read it.
+
+Content: dashboard version and time zone, per miner firmware, board revision, ASIC, current values, fans, pools, rejected shares, availability, boot times, the outages and restarts in the period, an **hour overview as a text graphic** and all log entries. The alert thresholds are at the end.
+
+Before saving you see a **preview**. Checkboxes: **remove IP addresses** and **remove pool addresses** (both on), **replace miner names** (off). **Wallet addresses are always removed**, pool user names are never included. Then **Copy** (for a ticket form) or **Save as .txt** (to attach).

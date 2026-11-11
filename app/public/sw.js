@@ -1,7 +1,7 @@
 // Service worker: makes the dashboard installable and shows push notifications.
 // Pages are loaded from the network first; the cached copy is only used when the server is unreachable.
 // API calls are never cached, so the numbers are always live.
-const CACHE = 'minerdash-v18';
+const CACHE = 'minerdash-v19';
 const SHELL = ['./', 'widget', 'i18n.js', 'theme.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

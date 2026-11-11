@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0 – 2026-11-11
+- Support export on the LOG page: one English text report for the selected miner and period (firmware, board revision, current values, pools, availability, boot times, outages, hour map, log entries) with a preview that removes IP and pool addresses; wallet addresses are always removed. Copy or save as .txt. Idea from r/BitAxe – thanks!
+
 ## 1.6.0 – 2026-11-10
 - Boot time after a restart: time until the miner hashes again, shown in the log ("hashing again after 48 s") and in the availability box (last and average, yellow when clearly slower than usual). Idea by BTC Ledger – thanks!
 - Event Log / Pool Event Log: no inner scrollbar any more, they show the newest entries that fit plus a link to the LOG page with the matching filter.

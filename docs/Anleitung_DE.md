@@ -361,3 +361,11 @@ Das Dashboard merkt sich, mit welchem Pool jeder Miner verbunden ist, und schrei
 | Pool-Modus: Dual-Pool / 1 Pool | zwischen einem und zwei Pools umgeschaltet | nein |
 
 Eine Änderung muss bei **zwei Abfragen hintereinander** zu sehen sein – ein kurzer Aussetzer erzeugt keinen Eintrag. Auf der Seite LOG gibt es dafür die Art **„Pool-Wechsel der Miner“**. Ändert sich der Pool, während das Dashboard aus ist, wird das beim nächsten Start nachgetragen.
+
+## 19. Support-Export (Bericht für den Hersteller-Support)
+
+Auf der Seite **LOG** neben „CSV“: **🧾 Support-Export**. Er nimmt den gerade gewählten **Miner und Zeitraum** (auch eine angeklickte Stunde) und erstellt einen Bericht für ein Support-Ticket – **immer auf Englisch**, damit jeder Support ihn lesen kann.
+
+Inhalt: Dashboard-Version und Zeitzone, pro Miner Firmware, Board-Revision, ASIC, aktuelle Werte, Lüfter, Pools, abgelehnte Shares, Verfügbarkeit, Startzeiten, die Ausfälle und Neustarts im Zeitraum, eine **Stunden-Übersicht als Textgrafik** und alle Log-Einträge. Am Ende stehen die Warngrenzen.
+
+Vor dem Speichern siehst du eine **Vorschau**. Häkchen: **IP-Adressen entfernen** und **Pool-Adressen entfernen** (beide an), **Miner-Namen ersetzen** (aus). **Wallet-Adressen werden immer entfernt**, Pool-Benutzernamen sind nie enthalten. Dann **Kopieren** (für ein Ticket-Formular) oder **Als .txt speichern** (zum Anhängen).
